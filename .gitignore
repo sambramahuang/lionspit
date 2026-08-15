@@ -1,0 +1,17 @@
+# Secrets and local environment config
+**/.env
+**/.env.*
+!**/.env.example
+
+# Python virtual environments and caches
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Frontend build output
+**/node_modules/
+**/dist/
+
+# Local generated data
+**/chroma_data/

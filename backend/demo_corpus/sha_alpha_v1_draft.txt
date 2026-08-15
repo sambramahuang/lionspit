@@ -1,0 +1,27 @@
+ALPHA ROBOTICS PTE LTD
+SHAREHOLDERS' AGREEMENT (DRAFT)
+
+Version: v1 (internal working draft, not circulated to client)
+Date: 10 March 2022
+Status: Draft. Not executed. Not partner-reviewed.
+
+This draft Shareholders' Agreement is made among the shareholders of
+Alpha Robotics Pte Ltd, a company incorporated in Singapore.
+
+1. Board Composition. The Board shall comprise three (3) directors, of
+whom one shall be nominated by each founding shareholder.
+
+2. Transfer Restrictions. No shareholder may transfer any shares without
+first offering them to the other shareholders on the same terms
+(right of first refusal), for a period of 30 days.
+
+3. Indemnity. Each shareholder indemnifies the company against losses
+arising from that shareholder's breach of this agreement, capped at
+S$50,000.
+
+4. Reserved Matters. The following require unanimous shareholder consent:
+issuance of new shares, amendment of the constitution, and voluntary
+winding up.
+
+[Drafting notes: figures in clause 3 are placeholders pending partner
+review. Do not send to client in this form.]
