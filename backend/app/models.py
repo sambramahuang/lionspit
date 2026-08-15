@@ -78,6 +78,7 @@ class SearchResultItem(BaseModel):
     score: float
     score_breakdown: dict
     similarity: float
+    llm_relevance_reason: Optional[str] = None
 
 
 class RejectedItem(BaseModel):

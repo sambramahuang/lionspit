@@ -15,6 +15,7 @@ from collections import defaultdict
 from datetime import datetime
 
 from app import vectorstore
+from app.llm_client import call_llm_json
 from app.models import (
     DocumentMetadata,
     RankingWeights,
@@ -22,6 +23,57 @@ from app.models import (
     SearchResponse,
     SearchResultItem,
 )
+
+RELEVANCE_SYSTEM_PROMPT = """You are a legal research assistant helping a lawyer find genuinely
+useful precedent documents. You are given a search query and a list of candidate documents that
+already passed a semantic-similarity and ranking-score filter. Some of them may be semantically
+close in wording but not actually a useful precedent for this query -- e.g. right practice area but
+the wrong kind of clause, or a document that only mentions related terms in passing. Judge each
+candidate's real relevance to the query.
+
+Respond with ONLY a single JSON object, no prose, no markdown fences, shaped as:
+
+{
+  "judgments": [
+    {"doc_id": "...", "relevant": true or false, "reason": "one short plain-English sentence"}
+  ]
+}
+
+Include exactly one judgment per candidate given. Always fill in "reason": if relevant, say briefly
+why it's useful for this query; if not, say briefly why it falls short.
+"""
+
+
+def _build_relevance_block(c: dict) -> str:
+    meta = c["meta"]
+    return (
+        f"doc_id: {c['doc_id']}\n"
+        f"filename: {meta.get('filename')}\n"
+        f"document_type: {meta.get('document_type')}\n"
+        f"short_description: {meta.get('short_description')}\n"
+        f"excerpt: {c['text'][:500]}"
+    )
+
+
+def _judge_relevance_with_llm(query: str, candidates: list) -> dict:
+    """Asks the LLM to judge true relevance of each candidate to the query,
+    beyond raw embedding similarity. Fails open (returns {}) on any LLM
+    error so a flaky API call never breaks search -- results just fall
+    back to the embedding + weighted-score ranking alone."""
+    if not candidates:
+        return {}
+    blocks = "\n\n".join(_build_relevance_block(c) for c in candidates)
+    user_prompt = f"Search query: {query}\n\nCandidates:\n\n{blocks}"
+    try:
+        data = call_llm_json(RELEVANCE_SYSTEM_PROMPT, user_prompt, max_tokens=800)
+    except Exception:
+        return {}
+    out = {}
+    for j in data.get("judgments", []):
+        doc_id = j.get("doc_id")
+        if doc_id:
+            out[doc_id] = {"relevant": bool(j.get("relevant", True)), "reason": j.get("reason", "")}
+    return out
 
 
 def _parse_date(value):
@@ -172,6 +224,34 @@ def run_search(req) -> SearchResponse:
                 ))
 
     remaining = [c for c in visible if c["doc_id"] not in rejected_ids]
+
+    # --- Step 5: LLM relevance judgment -----------------------------------
+    # Embedding similarity + the weighted score can surface documents that
+    # are semantically close in wording but not actually useful precedents
+    # for this query. Have the LLM review the surviving pool, drop anything
+    # it judges not genuinely relevant (moved into "rejected" with a plain
+    # -English reason), and attach a reason to what it keeps.
+    judgments = _judge_relevance_with_llm(req.query, remaining)
+    if judgments:
+        still_relevant = []
+        for c in remaining:
+            j = judgments.get(c["doc_id"])
+            if j is None:
+                still_relevant.append(c)  # no judgment returned for this one -- fail open, keep it
+                continue
+            c["llm_relevance_reason"] = j["reason"]
+            if j["relevant"]:
+                still_relevant.append(c)
+            else:
+                rejected_ids.add(c["doc_id"])
+                rejected_items.append(RejectedItem(
+                    doc_id=c["doc_id"],
+                    filename=c["meta"].get("filename", c["doc_id"]),
+                    metadata=DocumentMetadata(**c["meta"]),
+                    reason="Not relevant to this query: " + (j["reason"] or "judged not relevant."),
+                ))
+        remaining = still_relevant
+
     keep_n = max(req.keep_top, 0)
     kept_raw, other_raw = remaining[:keep_n], remaining[keep_n:]
 
@@ -183,6 +263,7 @@ def run_search(req) -> SearchResponse:
             score=c["score"],
             score_breakdown=c["breakdown"],
             similarity=round(c["similarity"], 3),
+            llm_relevance_reason=c.get("llm_relevance_reason"),
         )
 
     return SearchResponse(

@@ -96,6 +96,7 @@ export default function SearchPage() {
                 key={item.doc_id}
                 item={item}
                 tone="kept"
+                reason={item.llm_relevance_reason}
                 selectable
                 selected={selectedIds.includes(item.doc_id)}
                 onToggle={toggleSelect}
@@ -158,6 +159,7 @@ export default function SearchPage() {
                       key={item.doc_id}
                       item={item}
                       tone="neutral"
+                      reason={item.llm_relevance_reason}
                       selectable
                       selected={selectedIds.includes(item.doc_id)}
                       onToggle={toggleSelect}
