@@ -18,6 +18,10 @@ from app import vectorstore
 from app.llm_client import call_llm_json
 from app.models import (
     DocumentMetadata,
+    LineageCluster,
+    LineageEdge,
+    LineageNode,
+    LineageResponse,
     RankingWeights,
     RejectedItem,
     SearchResponse,
@@ -274,3 +278,87 @@ def run_search(req) -> SearchResponse:
         rejected=rejected_items,
         access_restricted=access_restricted,
     )
+
+
+def _to_lineage_node(record: dict) -> LineageNode:
+    meta = record["metadata"]
+    return LineageNode(
+        doc_id=record["doc_id"],
+        filename=meta.get("filename", record["doc_id"]),
+        metadata=DocumentMetadata(**meta),
+    )
+
+
+def _supersession_reason(current_meta: dict, other_meta: dict) -> str:
+    """Same comparison rules run_search uses to reject a superseded doc
+    against the best-in-cluster -- reused here so supersession is explained
+    the same way in search results and in the lineage graph."""
+    reasons = []
+    current_date = _parse_date(current_meta.get("document_date"))
+    other_date = _parse_date(other_meta.get("document_date"))
+    if current_date and other_date and other_date < current_date:
+        reasons.append(f"superseded by a later version dated {current_meta.get('document_date')}")
+    if current_meta.get("partner_approved") is True and other_meta.get("partner_approved") is not True:
+        reasons.append("not partner-approved, while a partner-approved version exists")
+    if other_meta.get("version") and current_meta.get("version") and \
+       str(other_meta.get("version")) < str(current_meta.get("version")):
+        reasons.append(f"lower version ({other_meta.get('version')}) than the current one ({current_meta.get('version')})")
+    return "; ".join(reasons) if reasons else "earlier document in the same matter"
+
+
+def compute_lineage() -> LineageResponse:
+    """Corpus-wide view of the same matter-clustering + supersession logic
+    run_search uses per-query, exposed as a standalone graph: one cluster
+    per matter (matter_type + practice_area + jurisdiction), with the
+    "current" document at the hub and every other version pointing to it
+    with a plain-English reason. Documents with no cluster-mate are listed
+    separately rather than force-fit into a graph with nothing to show."""
+    records = vectorstore.list_all()
+
+    grouped = defaultdict(list)
+    for r in records:
+        grouped[_cluster_key(r["metadata"])].append(r)
+
+    clusters = []
+    standalone = []
+    for key, group in grouped.items():
+        if key == "||" or len(group) < 2:
+            standalone.extend(_to_lineage_node(r) for r in group)
+            continue
+
+        def sort_key(r):
+            meta = r["metadata"]
+            d = _parse_date(meta.get("document_date"))
+            return (
+                1 if meta.get("partner_approved") is True else 0,
+                d.timestamp() if d else 0,
+                str(meta.get("version") or ""),
+            )
+
+        group_sorted = sorted(group, key=sort_key, reverse=True)
+        current = group_sorted[0]
+        others = group_sorted[1:]
+
+        edges = [
+            LineageEdge(
+                from_doc_id=other["doc_id"],
+                to_doc_id=current["doc_id"],
+                reason=_supersession_reason(current["metadata"], other["metadata"]),
+            )
+            for other in others
+        ]
+
+        matter = current["metadata"].get("matter_type") or "Matter"
+        jurisdiction = current["metadata"].get("jurisdiction")
+        label = f"{matter} · {jurisdiction}" if jurisdiction else matter
+
+        clusters.append(LineageCluster(
+            key=key,
+            label=label,
+            current_doc_id=current["doc_id"],
+            nodes=[_to_lineage_node(r) for r in group_sorted],
+            edges=edges,
+        ))
+
+    clusters.sort(key=lambda c: len(c.nodes), reverse=True)
+    return LineageResponse(clusters=clusters, standalone=standalone)

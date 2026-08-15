@@ -97,6 +97,31 @@ class SearchResponse(BaseModel):
     access_restricted: list[RejectedItem]   # blocked by confidentiality + viewer_clearance, not content
 
 
+class LineageNode(BaseModel):
+    doc_id: str
+    filename: str
+    metadata: DocumentMetadata
+
+
+class LineageEdge(BaseModel):
+    from_doc_id: str    # the older / superseded document
+    to_doc_id: str       # the current document it points to
+    reason: str
+
+
+class LineageCluster(BaseModel):
+    key: str
+    label: str
+    current_doc_id: str
+    nodes: list[LineageNode]
+    edges: list[LineageEdge]
+
+
+class LineageResponse(BaseModel):
+    clusters: list[LineageCluster]
+    standalone: list[LineageNode]  # documents with no other version in their matter cluster
+
+
 class DraftRequest(BaseModel):
     query: str
     doc_ids: list[str]

@@ -593,6 +593,121 @@ input[type="range"] {
   padding: 16px 18px;
 }
 
+/* ---------------------------------------------------------------------
+   Library view toggle + lineage graph
+------------------------------------------------------------------------ */
+.view-toggle {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.view-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.view-toggle-btn:hover { background: var(--paper-dim); }
+
+.view-toggle-btn.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+
+.lineage-cluster {
+  background: #fff;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.lineage-cluster-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.lineage-diagram {
+  position: relative;
+  overflow-x: auto;
+}
+
+.lineage-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.lineage-node {
+  position: absolute;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  background: var(--paper-dim);
+  padding: 8px 10px;
+  box-sizing: border-box;
+}
+
+.lineage-node-current {
+  background: var(--flag-green-bg);
+  border-color: var(--flag-green);
+}
+
+.lineage-node-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lineage-node-meta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.lineage-reasons {
+  margin-top: 14px;
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lineage-reason-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12.5px;
+}
+
+.lineage-reason-file {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .empty-state {
   border: 1px dashed var(--rule);
   border-radius: var(--radius);

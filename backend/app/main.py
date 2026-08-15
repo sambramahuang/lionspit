@@ -13,6 +13,7 @@ from app.models import (
     DraftRequest,
     DraftResponse,
     IngestResult,
+    LineageResponse,
     SearchRequest,
     SearchResponse,
 )
@@ -98,6 +99,13 @@ def get_document(doc_id: str):
 def reset_documents():
     vectorstore.reset()
     return {"status": "reset"}
+
+
+@app.get("/api/lineage", response_model=LineageResponse)
+def lineage():
+    """Corpus-wide version-history graph: one cluster per matter, current
+    document at the hub, every other version pointing to it with a reason."""
+    return search_module.compute_lineage()
 
 
 @app.post("/api/search", response_model=SearchResponse)

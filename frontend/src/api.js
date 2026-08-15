@@ -29,6 +29,8 @@ export const api = {
 
   resetDocuments: () => request("/api/documents", { method: "DELETE" }),
 
+  lineage: () => request("/api/lineage"),
+
   ingest: (files) => {
     const form = new FormData();
     for (const f of files) form.append("files", f);

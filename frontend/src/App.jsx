@@ -2,10 +2,12 @@ import React, { useEffect, useState } from "react";
 import { api } from "./api.js";
 import UploadPanel from "./components/UploadPanel.jsx";
 import DocumentLibrary from "./components/DocumentLibrary.jsx";
+import LineageGraph from "./components/LineageGraph.jsx";
 import SearchPage from "./components/SearchPage.jsx";
 
 export default function App() {
   const [tab, setTab] = useState("library");
+  const [libraryView, setLibraryView] = useState("list");
   const [apiUp, setApiUp] = useState(null);
   const [docCount, setDocCount] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -68,7 +70,26 @@ export default function App() {
             </div>
             <UploadPanel onIngested={bumpRefresh} />
             <div style={{ height: 28 }} />
-            <DocumentLibrary refreshKey={refreshKey} onReset={bumpRefresh} />
+
+            <div className="view-toggle">
+              <button
+                className={`view-toggle-btn ${libraryView === "list" ? "active" : ""}`}
+                onClick={() => setLibraryView("list")}
+              >
+                List view
+              </button>
+              <button
+                className={`view-toggle-btn ${libraryView === "lineage" ? "active" : ""}`}
+                onClick={() => setLibraryView("lineage")}
+              >
+                Lineage graph
+              </button>
+            </div>
+
+            {libraryView === "list" && (
+              <DocumentLibrary refreshKey={refreshKey} onReset={bumpRefresh} />
+            )}
+            {libraryView === "lineage" && <LineageGraph refreshKey={refreshKey} />}
           </>
         )}
 
