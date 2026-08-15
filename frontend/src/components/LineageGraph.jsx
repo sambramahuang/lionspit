@@ -22,7 +22,7 @@ function LineageNodeCard({ node, x, y, current, onPreview }) {
       <div>
         <div className="lineage-node-title">{node.filename}</div>
         <div className="lineage-node-meta">
-          {[m.version && `v${m.version}`, m.document_date, m.partner_approved && "partner-approved"]
+          {[m.version, m.document_date, m.partner_approved && "partner-approved"]
             .filter(Boolean)
             .join(" · ") || "metadata not detected"}
         </div>

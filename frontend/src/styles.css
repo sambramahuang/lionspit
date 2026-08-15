@@ -706,6 +706,9 @@ input[type="range"] {
   font-size: 10.5px;
   color: var(--text-muted);
   margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lineage-reasons {

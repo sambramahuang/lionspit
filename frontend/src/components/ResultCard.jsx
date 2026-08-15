@@ -33,7 +33,7 @@ export default function ResultCard({
           <div>
             <p className="result-title">{item.filename}</p>
             <div className="result-meta">
-              {[m.matter_type, m.jurisdiction, m.document_date, m.version && `v${m.version}`]
+              {[m.matter_type, m.jurisdiction, m.document_date, m.version]
                 .filter(Boolean)
                 .join(" · ") || "metadata not detected"}
             </div>

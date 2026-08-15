@@ -10,7 +10,7 @@ export default function PreviewModal({ open, doc, loading, error, onClose }) {
             <div className="preview-title">{doc ? doc.filename : "Document preview"}</div>
             {doc && (
               <div className="preview-meta">
-                {[doc.metadata?.matter_type, doc.metadata?.jurisdiction, doc.metadata?.document_date, doc.metadata?.version && `v${doc.metadata.version}`]
+                {[doc.metadata?.matter_type, doc.metadata?.jurisdiction, doc.metadata?.document_date, doc.metadata?.version]
                   .filter(Boolean)
                   .join(" · ") || "metadata not detected"}
               </div>
