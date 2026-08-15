@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { api } from "../api.js";
 import SearchPanel from "./SearchPanel.jsx";
 import ResultCard from "./ResultCard.jsx";
@@ -12,7 +12,7 @@ const DEFAULT_WEIGHTS = {
   jurisdiction_match: 0.1,
 };
 
-export default function SearchPage() {
+export default function SearchPage({ onPreview }) {
   const [query, setQuery] = useState("");
   const [jurisdictionFilter, setJurisdictionFilter] = useState("");
   const [matterTypeFilter, setMatterTypeFilter] = useState("");
@@ -25,20 +25,8 @@ export default function SearchPage() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [showOther, setShowOther] = useState(false);
   const [highlighted, setHighlighted] = useState(null);
-  const [previewDoc, setPreviewDoc] = useState(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewLoading, setPreviewLoading] = useState(false);
 
   const cardRefs = useRef({});
-
-  useEffect(() => {
-    if (!previewOpen) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") closePreview();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [previewOpen]);
 
   const runSearch = async () => {
     if (!query.trim()) return;
@@ -75,26 +63,10 @@ export default function SearchPage() {
     setTimeout(() => setHighlighted(null), 1600);
   };
 
-  const openPreview = async (docId) => {
-    setPreviewOpen(true);
-    setPreviewLoading(true);
-    setPreviewDoc(null);
-    try {
-      const doc = await api.getDocument(docId);
-      setPreviewDoc(doc);
-      setHighlighted(docId);
-      setTimeout(() => setHighlighted(null), 1600);
-    } catch (e) {
-      setError(e.message);
-      setPreviewOpen(false);
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
-
-  const closePreview = () => {
-    setPreviewOpen(false);
-    setPreviewDoc(null);
+  const previewAndHighlight = (docId) => {
+    onPreview?.(docId);
+    setHighlighted(docId);
+    setTimeout(() => setHighlighted(null), 1600);
   };
 
   return (
@@ -134,7 +106,7 @@ export default function SearchPage() {
                 selectable
                 selected={selectedIds.includes(item.doc_id)}
                 onToggle={toggleSelect}
-                onPreview={openPreview}
+                onPreview={previewAndHighlight}
                 sourceRef={(el) => (cardRefs.current[item.doc_id] = el)}
                 highlighted={highlighted === item.doc_id}
               />
@@ -156,7 +128,7 @@ export default function SearchPage() {
                     item={item}
                     tone="rejected"
                     reason={item.reason}
-                    onPreview={openPreview}
+                    onPreview={previewAndHighlight}
                     sourceRef={(el) => (cardRefs.current[item.doc_id] = el)}
                     highlighted={highlighted === item.doc_id}
                   />
@@ -199,7 +171,7 @@ export default function SearchPage() {
                       selectable
                       selected={selectedIds.includes(item.doc_id)}
                       onToggle={toggleSelect}
-                      onPreview={openPreview}
+                      onPreview={previewAndHighlight}
                       sourceRef={(el) => (cardRefs.current[item.doc_id] = el)}
                       highlighted={highlighted === item.doc_id}
                     />
@@ -211,32 +183,6 @@ export default function SearchPage() {
 
           <DraftView query={query} selectedDocIds={selectedIds} onCiteClick={jumpToSource} />
         </>
-      )}
-
-      {previewOpen && (
-        <div className="modal-backdrop" onClick={closePreview}>
-          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
-            {previewLoading && <p className="spinner-text">Loading document preview...</p>}
-            {previewDoc && (
-              <>
-                <div className="preview-header">
-                  <div>
-                    <div className="preview-title">{previewDoc.filename}</div>
-                    <div className="preview-meta">
-                      {[previewDoc.metadata?.matter_type, previewDoc.metadata?.jurisdiction, previewDoc.metadata?.document_date, previewDoc.metadata?.version && `v${previewDoc.metadata.version}`]
-                        .filter(Boolean)
-                        .join(" · ") || "metadata not detected"}
-                    </div>
-                  </div>
-                  <button type="button" className="btn btn-ghost" onClick={closePreview}>
-                    Close
-                  </button>
-                </div>
-                <div className="preview-text">{previewDoc.text}</div>
-              </>
-            )}
-          </div>
-        </div>
       )}
     </>
   );

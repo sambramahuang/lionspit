@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
 
-export default function DocumentLibrary({ refreshKey, onReset }) {
+export default function DocumentLibrary({ refreshKey, onReset, onPreview }) {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,6 +63,7 @@ export default function DocumentLibrary({ refreshKey, onReset }) {
                 <th>Status</th>
                 <th>Confidentiality</th>
                 <th>Used</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -94,6 +95,15 @@ export default function DocumentLibrary({ refreshKey, onReset }) {
                     )}
                   </td>
                   <td className="mono">{d.usage_count}×</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-ghost preview-btn"
+                      onClick={() => onPreview?.(d.doc_id)}
+                    >
+                      Preview
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

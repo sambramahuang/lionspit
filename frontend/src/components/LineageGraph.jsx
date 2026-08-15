@@ -7,29 +7,38 @@ import { api } from "../api.js";
 // history node to it. Deterministic and legible at hackathon-corpus scale
 // (a handful of nodes per matter) -- no force layout, nothing to settle.
 const NODE_W = 230;
-const NODE_H = 58;
+const NODE_H = 78;
 const COL_GAP = 110;
-const ROW_GAP = 18;
+const ROW_GAP = 16;
 const ROW_H = NODE_H + ROW_GAP;
 
-function LineageNodeCard({ node, x, y, current }) {
+function LineageNodeCard({ node, x, y, current, onPreview }) {
   const m = node.metadata || {};
   return (
     <div
       className={`lineage-node ${current ? "lineage-node-current" : ""}`}
       style={{ left: x, top: y, width: NODE_W, height: NODE_H }}
     >
-      <div className="lineage-node-title">{node.filename}</div>
-      <div className="lineage-node-meta">
-        {[m.version && `v${m.version}`, m.document_date, m.partner_approved && "partner-approved"]
-          .filter(Boolean)
-          .join(" · ") || "metadata not detected"}
+      <div>
+        <div className="lineage-node-title">{node.filename}</div>
+        <div className="lineage-node-meta">
+          {[m.version && `v${m.version}`, m.document_date, m.partner_approved && "partner-approved"]
+            .filter(Boolean)
+            .join(" · ") || "metadata not detected"}
+        </div>
       </div>
+      <button
+        type="button"
+        className="btn btn-ghost preview-btn lineage-preview-btn"
+        onClick={() => onPreview?.(node.doc_id)}
+      >
+        Preview
+      </button>
     </div>
   );
 }
 
-function ClusterDiagram({ cluster }) {
+function ClusterDiagram({ cluster, onPreview }) {
   const current = cluster.nodes.find((n) => n.doc_id === cluster.current_doc_id);
   const history = cluster.nodes.filter((n) => n.doc_id !== cluster.current_doc_id);
   const reasonByDoc = Object.fromEntries(cluster.edges.map((e) => [e.from_doc_id, e.reason]));
@@ -71,9 +80,11 @@ function ClusterDiagram({ cluster }) {
         </svg>
 
         {history.map((node, i) => (
-          <LineageNodeCard key={node.doc_id} node={node} x={0} y={i * ROW_H} current={false} />
+          <LineageNodeCard key={node.doc_id} node={node} x={0} y={i * ROW_H} current={false} onPreview={onPreview} />
         ))}
-        {current && <LineageNodeCard node={current} x={currentX} y={currentY} current />}
+        {current && (
+          <LineageNodeCard node={current} x={currentX} y={currentY} current onPreview={onPreview} />
+        )}
       </div>
 
       <div className="lineage-reasons">
@@ -88,7 +99,7 @@ function ClusterDiagram({ cluster }) {
   );
 }
 
-export default function LineageGraph({ refreshKey }) {
+export default function LineageGraph({ refreshKey, onPreview }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -111,7 +122,7 @@ export default function LineageGraph({ refreshKey }) {
     return (
       <div className="empty-state">
         No version history to show yet — a lineage forms once two or more
-        documents share the same matter type, practice area, and jurisdiction.
+        documents share the same named parties and matter type.
       </div>
     );
   }
@@ -119,7 +130,7 @@ export default function LineageGraph({ refreshKey }) {
   return (
     <div>
       {data.clusters.map((cluster) => (
-        <ClusterDiagram key={cluster.key} cluster={cluster} />
+        <ClusterDiagram key={cluster.key} cluster={cluster} onPreview={onPreview} />
       ))}
 
       {data.standalone.length > 0 && (
@@ -127,10 +138,24 @@ export default function LineageGraph({ refreshKey }) {
           <div className="section-label">
             Standalone documents <span className="count">{data.standalone.length}</span>
           </div>
-          <p style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-            No other version shares this document's matter type, practice area,
-            and jurisdiction, so there's no lineage to draw.
+          <p style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "0 0 10px" }}>
+            No other version shares this document's named parties and matter
+            type, so there's no lineage to draw.
           </p>
+          <div className="lineage-standalone-grid">
+            {data.standalone.map((node) => (
+              <div key={node.doc_id} className="lineage-standalone-item">
+                <span className="lineage-standalone-name">{node.filename}</span>
+                <button
+                  type="button"
+                  className="btn btn-ghost preview-btn"
+                  onClick={() => onPreview?.(node.doc_id)}
+                >
+                  Preview
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

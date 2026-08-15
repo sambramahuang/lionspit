@@ -4,6 +4,8 @@ import UploadPanel from "./components/UploadPanel.jsx";
 import DocumentLibrary from "./components/DocumentLibrary.jsx";
 import LineageGraph from "./components/LineageGraph.jsx";
 import SearchPage from "./components/SearchPage.jsx";
+import PreviewModal from "./components/PreviewModal.jsx";
+import { useDocumentPreview } from "./hooks/useDocumentPreview.js";
 
 export default function App() {
   const [tab, setTab] = useState("library");
@@ -11,6 +13,7 @@ export default function App() {
   const [apiUp, setApiUp] = useState(null);
   const [docCount, setDocCount] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
+  const preview = useDocumentPreview();
 
   const checkHealth = async () => {
     try {
@@ -87,14 +90,24 @@ export default function App() {
             </div>
 
             {libraryView === "list" && (
-              <DocumentLibrary refreshKey={refreshKey} onReset={bumpRefresh} />
+              <DocumentLibrary refreshKey={refreshKey} onReset={bumpRefresh} onPreview={preview.openPreview} />
             )}
-            {libraryView === "lineage" && <LineageGraph refreshKey={refreshKey} />}
+            {libraryView === "lineage" && (
+              <LineageGraph refreshKey={refreshKey} onPreview={preview.openPreview} />
+            )}
           </>
         )}
 
-        {tab === "search" && <SearchPage />}
+        {tab === "search" && <SearchPage onPreview={preview.openPreview} />}
       </main>
+
+      <PreviewModal
+        open={preview.open}
+        doc={preview.doc}
+        loading={preview.loading}
+        error={preview.error}
+        onClose={preview.closePreview}
+      />
     </div>
   );
 }
