@@ -15,6 +15,7 @@ class DocumentMetadata(BaseModel):
     yield a clean answer -- an empty field is more honest than a guess,
     and the UI should show "not detected" rather than fabricate one.
     """
+    client_name: Optional[str] = None
     matter_type: Optional[str] = None
     practice_area: Optional[str] = None
     jurisdiction: Optional[str] = None

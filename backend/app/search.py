@@ -103,14 +103,19 @@ def _normalize(values: dict) -> dict:
 
 
 def _cluster_key(meta: dict) -> str:
-    """Rough same-matter grouping so we can compare versions against each
-    other rather than against the whole corpus. Good enough for a
-    hackathon-scale corpus; a production system would use a real matter ID."""
-    return "|".join([
-        str(meta.get("matter_type", "")).lower().strip(),
-        str(meta.get("practice_area", "")).lower().strip(),
-        str(meta.get("jurisdiction", "")).lower().strip(),
-    ])
+    """Same-matter grouping so we can compare versions against each other
+    rather than against the whole corpus. Requires a matching client_name --
+    matter_type/jurisdiction alone are category-level, not matter-level, so
+    two unrelated clients' documents of the same type (e.g. two different
+    companies' shareholders' agreements) must never merge into one lineage.
+    When client_name is missing there isn't enough signal to safely group
+    the document with anything, so it gets a key unique to itself."""
+    client = str(meta.get("client_name", "")).lower().strip()
+    matter = str(meta.get("matter_type", "")).lower().strip()
+    if not client or not matter:
+        return f"__unclustered__|{meta.get('filename', '')}"
+    jurisdiction = str(meta.get("jurisdiction", "")).lower().strip()
+    return "|".join([client, matter, jurisdiction])
 
 
 def run_search(req) -> SearchResponse:
@@ -201,7 +206,7 @@ def run_search(req) -> SearchResponse:
     rejected_ids = set()
     rejected_items = []
     for key, group in clusters.items():
-        if len(group) < 2 or key == "||":
+        if len(group) < 2:
             continue
         # best-in-cluster = highest score, wins as the "current" version
         group_sorted = sorted(group, key=lambda c: c["score"], reverse=True)
@@ -322,7 +327,7 @@ def compute_lineage() -> LineageResponse:
     clusters = []
     standalone = []
     for key, group in grouped.items():
-        if key == "||" or len(group) < 2:
+        if len(group) < 2:
             standalone.extend(_to_lineage_node(r) for r in group)
             continue
 
@@ -348,9 +353,10 @@ def compute_lineage() -> LineageResponse:
             for other in others
         ]
 
+        client = current["metadata"].get("client_name") or "Unnamed client"
         matter = current["metadata"].get("matter_type") or "Matter"
         jurisdiction = current["metadata"].get("jurisdiction")
-        label = f"{matter} · {jurisdiction}" if jurisdiction else matter
+        label = f"{client} — {matter} · {jurisdiction}" if jurisdiction else f"{client} — {matter}"
 
         clusters.append(LineageCluster(
             key=key,

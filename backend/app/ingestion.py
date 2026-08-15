@@ -24,6 +24,7 @@ Respond with ONLY a single JSON object, no prose, no markdown fences, with
 exactly these keys:
 
 {
+  "client_name": string or null -- the specific named client/company/primary party this document is for (e.g. "Alpha Robotics Pte Ltd"). Identifies WHICH matter this is, as distinct from matter_type (WHAT KIND of matter). Two unrelated companies' documents must never share a client_name even if matter_type/practice_area/jurisdiction match,
   "matter_type": string or null,
   "practice_area": string or null,
   "jurisdiction": string or null,
