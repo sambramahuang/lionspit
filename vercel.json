@@ -2,11 +2,15 @@
   "services": {
     "frontend": {
       "root": "frontend",
-      "framework": "vite"
+      "framework": "vite",
+      "installCommand": "npm install",
+      "buildCommand": "npm run build"
     },
     "backend": {
       "root": "backend",
-      "entrypoint": "app.main:app"
+      "runtime": "python",
+      "entrypoint": "app.main:app",
+      "installCommand": "python -m pip install -r requirements.txt"
     }
   },
   "rewrites": [

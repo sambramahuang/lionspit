@@ -16,8 +16,10 @@ export default function PreviewModal({ open, doc, loading, error, onClose }) {
               </div>
             )}
           </div>
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
-            Close
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Close preview">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
           </button>
         </div>
 

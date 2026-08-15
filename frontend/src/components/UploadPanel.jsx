@@ -46,6 +46,7 @@ export default function UploadPanel({ onIngested }) {
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
+        <div className="dropzone-icon" />
         <p className="dropzone-title">Drop documents here, or click to browse</p>
         <p className="dropzone-sub">.txt, .docx, .pdf — any mix, any naming convention</p>
         <input

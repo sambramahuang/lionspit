@@ -23,13 +23,19 @@ export default function SearchPanel({
   return (
     <div className="card">
       <div className="search-row">
-        <input
-          className="search-input"
-          placeholder='Describe what you need — legal terms or plain English both work, e.g. "cap on founder liability in a shareholders agreement"'
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && onSearch()}
-        />
+        <div className="search-input-wrap">
+          <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            className="search-input"
+            placeholder='Describe what you need — legal terms or plain English both work, e.g. "cap on founder liability in a shareholders agreement"'
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onSearch()}
+          />
+        </div>
         <button className="btn btn-brass" onClick={onSearch} disabled={busy || !query.trim()}>
           {busy ? "Searching..." : "Search"}
         </button>

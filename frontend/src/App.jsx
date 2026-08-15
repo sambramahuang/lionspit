@@ -35,8 +35,11 @@ export default function App() {
     <div className="app-shell">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-name">Precedent Bank</span>
-          <span className="brand-tag">MVP · The Lion's Pit 2026</span>
+          <span className="brand-mark" aria-hidden="true">P</span>
+          <div className="brand-text">
+            <span className="brand-name">Precedent Bank</span>
+            <span className="brand-tag">MVP · The Lion's Pit 2026</span>
+          </div>
         </div>
         <nav className="tabs">
           <button
