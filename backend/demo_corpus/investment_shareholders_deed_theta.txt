@@ -1,0 +1,32 @@
+THETA BIOSCIENCES PTE LTD
+INVESTMENT AND SHAREHOLDERS DEED
+
+Date: 2 September 2023
+Status: Executed. Partner-approved by S. Ho.
+
+This Deed is entered into among the investors and founders of Theta
+Biosciences Pte Ltd, a Singapore-incorporated company, in connection
+with a seed investment.
+
+Note: this firm's precedent library files this instrument type under
+"Investment and Shareholders Deed" rather than "Shareholders' Agreement",
+though it performs the same function and should be surfaced by a
+shareholders' agreement search.
+
+1. Governance. The founders retain board control until a qualifying
+financing event, after which the lead investor is entitled to appoint
+one director.
+
+2. Pre-emption. Existing holders have a right of pre-emption over any
+new issue of shares, pro rata to their existing holding, exercisable
+within 14 days of notice.
+
+3. Founder Vesting. Founder shares vest monthly over four years with a
+twelve-month cliff, subject to acceleration on a change of control.
+
+4. Liquidation Preference. The investor is entitled to a 1x
+non-participating liquidation preference ahead of ordinary shareholders
+on any exit.
+
+5. Information Rights. The company shall provide unaudited quarterly
+management accounts and an annual budget to the lead investor.

@@ -1,0 +1,29 @@
+ALPHA ROBOTICS PTE LTD
+SHAREHOLDERS' AGREEMENT
+
+Version: v2
+Date: 5 January 2023
+Status: Reviewed by associate. Not yet partner-approved. Superseded by v3.
+
+This Shareholders' Agreement is made among the shareholders of Alpha
+Robotics Pte Ltd, a company incorporated in Singapore.
+
+1. Board Composition. The Board shall comprise four (4) directors, of
+whom two shall be nominated by the majority shareholder and one each by
+the two minority shareholders.
+
+2. Transfer Restrictions. No shareholder may transfer shares without
+first offering them to the other shareholders (right of first refusal),
+for a period of 21 days, followed by a tag-along right for minority
+shareholders.
+
+3. Indemnity. Each shareholder indemnifies the company against losses
+arising from that shareholder's breach of this agreement, capped at
+S$100,000.
+
+4. Reserved Matters. Unanimous consent required for: issuance of new
+shares, amendment of the constitution, voluntary winding up, and any
+related-party transaction above S$20,000.
+
+5. Deadlock. In the event of a deadlock at Board level, either party may
+refer the matter to mediation before any other remedy is pursued.
