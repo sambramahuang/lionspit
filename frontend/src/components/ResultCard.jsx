@@ -1,6 +1,16 @@
 import React from "react";
 
-export default function ResultCard({ item, tone, reason, selectable, selected, onToggle, sourceRef, highlighted }) {
+export default function ResultCard({
+  item,
+  tone,
+  reason,
+  selectable,
+  selected,
+  onToggle,
+  onPreview,
+  sourceRef,
+  highlighted,
+}) {
   const m = item.metadata || {};
   return (
     <div
@@ -13,7 +23,10 @@ export default function ResultCard({ item, tone, reason, selectable, selected, o
             <input
               type="checkbox"
               checked={!!selected}
-              onChange={() => onToggle?.(item.doc_id)}
+              onChange={(event) => {
+                event.stopPropagation();
+                onToggle?.(item.doc_id);
+              }}
               style={{ marginTop: 4 }}
             />
           )}
@@ -26,9 +39,22 @@ export default function ResultCard({ item, tone, reason, selectable, selected, o
             </div>
           </div>
         </div>
-        {typeof item.score === "number" && (
-          <span className="score-chip">score {item.score.toFixed(2)}</span>
-        )}
+
+        <div className="result-actions">
+          {typeof item.score === "number" && (
+            <span className="score-chip">score {item.score.toFixed(2)}</span>
+          )}
+          <button
+            type="button"
+            className="btn btn-ghost preview-btn"
+            onClick={(event) => {
+              event.stopPropagation();
+              onPreview?.(item.doc_id);
+            }}
+          >
+            Preview
+          </button>
+        </div>
       </div>
 
       {m.short_description && (

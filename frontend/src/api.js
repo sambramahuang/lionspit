@@ -25,6 +25,8 @@ export const api = {
 
   listDocuments: () => request("/api/documents"),
 
+  getDocument: (docId) => request(`/api/documents/${encodeURIComponent(docId)}`),
+
   resetDocuments: () => request("/api/documents", { method: "DELETE" }),
 
   ingest: (files) => {

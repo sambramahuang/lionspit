@@ -79,6 +79,21 @@ def list_documents():
     return out
 
 
+@app.get("/api/documents/{doc_id}")
+def get_document(doc_id: str):
+    record = vectorstore.get_by_id(doc_id)
+    if record is None:
+        raise HTTPException(404, "document not found")
+
+    meta = record["metadata"]
+    return {
+        "doc_id": record["doc_id"],
+        "filename": meta.get("filename", record["doc_id"]),
+        "metadata": meta,
+        "text": record["text"],
+    }
+
+
 @app.delete("/api/documents")
 def reset_documents():
     vectorstore.reset()

@@ -25,6 +25,8 @@ export default function SearchPage() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [showOther, setShowOther] = useState(false);
   const [highlighted, setHighlighted] = useState(null);
+  const [previewDoc, setPreviewDoc] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const cardRefs = useRef({});
 
@@ -61,6 +63,20 @@ export default function SearchPage() {
     const node = cardRefs.current[docId];
     if (node) node.scrollIntoView({ behavior: "smooth", block: "center" });
     setTimeout(() => setHighlighted(null), 1600);
+  };
+
+  const openPreview = async (docId) => {
+    setPreviewLoading(true);
+    try {
+      const doc = await api.getDocument(docId);
+      setPreviewDoc(doc);
+      setHighlighted(docId);
+      setTimeout(() => setHighlighted(null), 1600);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   return (
@@ -100,6 +116,7 @@ export default function SearchPage() {
                 selectable
                 selected={selectedIds.includes(item.doc_id)}
                 onToggle={toggleSelect}
+                onPreview={openPreview}
                 sourceRef={(el) => (cardRefs.current[item.doc_id] = el)}
                 highlighted={highlighted === item.doc_id}
               />
@@ -121,6 +138,7 @@ export default function SearchPage() {
                     item={item}
                     tone="rejected"
                     reason={item.reason}
+                    onPreview={openPreview}
                     sourceRef={(el) => (cardRefs.current[item.doc_id] = el)}
                     highlighted={highlighted === item.doc_id}
                   />
@@ -163,6 +181,7 @@ export default function SearchPage() {
                       selectable
                       selected={selectedIds.includes(item.doc_id)}
                       onToggle={toggleSelect}
+                      onPreview={openPreview}
                       sourceRef={(el) => (cardRefs.current[item.doc_id] = el)}
                       highlighted={highlighted === item.doc_id}
                     />
@@ -170,6 +189,28 @@ export default function SearchPage() {
                 </div>
               )}
             </>
+          )}
+
+          {previewLoading && <div className="empty-state">Loading document preview…</div>}
+
+          {previewDoc && (
+            <div className="preview-panel">
+              <div className="section-label" style={{ marginTop: 24 }}>Document preview</div>
+              <div className="preview-header">
+                <div>
+                  <div className="preview-title">{previewDoc.filename}</div>
+                  <div className="preview-meta">
+                    {[previewDoc.metadata?.matter_type, previewDoc.metadata?.jurisdiction, previewDoc.metadata?.document_date, previewDoc.metadata?.version && `v${previewDoc.metadata.version}`]
+                      .filter(Boolean)
+                      .join(" · ") || "metadata not detected"}
+                  </div>
+                </div>
+                <button type="button" className="btn btn-ghost" onClick={() => setPreviewDoc(null)}>
+                  Close
+                </button>
+              </div>
+              <div className="preview-text">{previewDoc.text}</div>
+            </div>
           )}
 
           <DraftView query={query} selectedDocIds={selectedIds} onCiteClick={jumpToSource} />
