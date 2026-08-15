@@ -25,6 +25,7 @@ exactly these keys:
 
 {
   "client_name": string or null -- the specific named client/company/primary party this document is for (e.g. "Alpha Robotics Pte Ltd"). Identifies WHICH matter this is, as distinct from matter_type (WHAT KIND of matter). Two unrelated companies' documents must never share a client_name even if matter_type/practice_area/jurisdiction match,
+  "counterparty_name": string or null -- the other specific named party to this document, if any (e.g. the landlord if client_name is the tenant, or vice versa). If a document names two parties, extract BOTH client_name and counterparty_name even if it's unclear from context alone which one is "the client" -- consistently naming both parties matters more than which field each goes in,
   "matter_type": string or null,
   "practice_area": string or null,
   "jurisdiction": string or null,

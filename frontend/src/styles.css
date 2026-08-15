@@ -551,13 +551,26 @@ input[type="range"] {
   padding-left: 8px;
 }
 
-.preview-panel {
-  border: 1px solid var(--rule-soft);
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(27, 36, 48, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+}
+
+.modal-panel {
   background: #fff;
   border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-  margin-top: 20px;
-  padding: 18px 18px 20px;
+  box-shadow: var(--shadow-md);
+  padding: 20px 22px 24px;
+  width: 100%;
+  max-width: 720px;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .preview-header {

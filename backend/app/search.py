@@ -104,18 +104,31 @@ def _normalize(values: dict) -> dict:
 
 def _cluster_key(meta: dict) -> str:
     """Same-matter grouping so we can compare versions against each other
-    rather than against the whole corpus. Requires a matching client_name --
+    rather than against the whole corpus. Requires matching named parties --
     matter_type/jurisdiction alone are category-level, not matter-level, so
     two unrelated clients' documents of the same type (e.g. two different
     companies' shareholders' agreements) must never merge into one lineage.
-    When client_name is missing there isn't enough signal to safely group
-    the document with anything, so it gets a key unique to itself."""
-    client = str(meta.get("client_name", "")).lower().strip()
+
+    Matches on the *unordered set* of client_name + counterparty_name rather
+    than client_name alone: when a document names two parties, extraction
+    can't always tell which one is "the client" (e.g. a tenancy renewal
+    might get filed with the tenant as client_name while the original lease
+    got filed with the landlord as client_name) -- matching on the pair is
+    robust to that, since both documents still name the same two parties.
+
+    When no party name is available there isn't enough signal to safely
+    group the document with anything, so it gets a key unique to itself."""
+    parties = sorted({
+        p for p in (
+            str(meta.get("client_name", "")).lower().strip(),
+            str(meta.get("counterparty_name", "")).lower().strip(),
+        ) if p
+    })
     matter = str(meta.get("matter_type", "")).lower().strip()
-    if not client or not matter:
+    if not parties or not matter:
         return f"__unclustered__|{meta.get('filename', '')}"
     jurisdiction = str(meta.get("jurisdiction", "")).lower().strip()
-    return "|".join([client, matter, jurisdiction])
+    return "|".join(parties + [matter, jurisdiction])
 
 
 def run_search(req) -> SearchResponse:
