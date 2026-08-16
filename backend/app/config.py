@@ -17,8 +17,10 @@ class Settings:
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     CHROMA_PERSIST_DIR: str = os.getenv("CHROMA_PERSIST_DIR", str(BACKEND_DIR / "chroma_data"))
     CORS_ORIGINS: list[str] = [
-        o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()
+        o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",") if o.strip()
     ]
+    # Allow all origins in development, restrict in production via environment variable
+    IS_DEVELOPMENT: bool = os.getenv("ENVIRONMENT", "development") == "development"
 
     def require_api_key(self) -> str:
         if not self.OPENAI_API_KEY:

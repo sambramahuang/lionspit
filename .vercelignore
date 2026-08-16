@@ -1,0 +1,14 @@
+backend/chroma_data/
+backend/demo_corpus/
+backend/tests/
+backend/.env
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+.git
+.gitignore
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.env.local
+.DS_Store

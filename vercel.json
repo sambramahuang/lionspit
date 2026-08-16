@@ -1,36 +1,30 @@
 {
+  "buildCommand": "npm install --prefix frontend && npm run build --prefix frontend",
   "env": {
-    "OPENAI_MODEL": "gpt-4o-mini",
-    "CORS_ORIGINS": "http://localhost:5173"
+    "OPENAI_MODEL": "gpt-4o-mini"
   },
-  "services": {
-    "frontend": {
-      "root": "frontend",
-      "framework": "vite",
-      "installCommand": "npm install",
-      "buildCommand": "npm run build"
+  "envs": {
+    "production": {
+      "CORS_ORIGINS": "@CORS_ORIGINS_PROD"
     },
-    "backend": {
-      "root": "backend",
-      "runtime": "python",
-      "entrypoint": "app.main:app",
-      "installCommand": "python -m pip install -r requirements.txt"
+    "preview": {
+      "CORS_ORIGINS": "@CORS_ORIGINS_PREVIEW"
     }
   },
   "rewrites": [
     {
-      "source": "/api(/.*)?",
-      "destination": {
-        "type": "service",
-        "service": "backend"
-      }
+      "source": "/api/:path*",
+      "destination": "/api/index.py"
     },
     {
       "source": "/(.*)",
-      "destination": {
-        "type": "service",
-        "service": "frontend"
-      }
+      "destination": "/frontend/dist/$1"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.py"
     }
   ]
 }
