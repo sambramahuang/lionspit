@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { api } from "./api.js";
 import UploadPanel from "./components/UploadPanel.jsx";
 import DocumentLibrary from "./components/DocumentLibrary.jsx";
 import LineageGraph from "./components/LineageGraph.jsx";
@@ -45,9 +46,20 @@ export default function App() {
   const [tab, setTab] = useState("library");
   const [libraryView, setLibraryView] = useState("list");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [apiUp, setApiUp] = useState(null);
+  const [docCount, setDocCount] = useState(0);
   const preview = useDocumentPreview();
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
+
+  useEffect(() => {
+    api.health()
+      .then((res) => {
+        setApiUp(true);
+        setDocCount(res.documents_indexed);
+      })
+      .catch(() => setApiUp(false));
+  }, [refreshKey]);
 
   return (
     <div className="app-shell">
@@ -91,6 +103,13 @@ export default function App() {
           magnification={80}
           distance={140}
         />
+
+        <div className="status-pill">
+          <span className={`status-dot ${apiUp === false ? "down" : ""}`} />
+          {apiUp === null && "checking..."}
+          {apiUp === true && `${docCount} docs indexed`}
+          {apiUp === false && "API offline"}
+        </div>
       </header>
 
       <main className="content">

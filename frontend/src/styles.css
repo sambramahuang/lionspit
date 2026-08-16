@@ -121,6 +121,33 @@ a { color: var(--brass); }
   z-index: 10;
 }
 
+/* Absolutely positioned so it sits at the top-right independent of the
+   Dock's own centering -- minimal by design: a small dot and short text,
+   no card/background chrome, sitting directly on the page. */
+.status-pill {
+  position: absolute;
+  top: 50%;
+  right: 32px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--flag-green);
+  display: inline-block;
+}
+.status-dot.down {
+  background: var(--flag-red);
+}
+
 /* Dock's own base rules live in Dock.css -- this repurposes it from a
    floating bottom-of-screen panel into a compact inline topbar nav:
    - dock-outer's height is normally driven entirely by an inline motion
