@@ -81,7 +81,13 @@ export default function ResultCard({
       )}
 
       {reason && (
-        <p className={tone === "restricted" ? "restricted-text" : "reason-text"}>{reason}</p>
+        <p
+          className={
+            tone === "restricted" ? "restricted-text" : tone === "rejected" ? "reason-text" : "relevance-text"
+          }
+        >
+          {reason}
+        </p>
       )}
     </div>
   );

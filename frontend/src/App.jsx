@@ -79,7 +79,7 @@ export default function App() {
           glow={0}
           brightness={1.0}
           contrast={1.0}
-          opacity={0.22}
+          opacity={0.13}
           orientation="horizontal"
           alternate={false}
           mouseInteraction={true}

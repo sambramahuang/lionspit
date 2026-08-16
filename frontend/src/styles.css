@@ -619,6 +619,17 @@ input[type="range"] {
   margin-top: 7px;
 }
 
+/* For the LLM's "why this matched" explanation on kept/neutral results --
+   deliberately not red. Red is reserved for rejection reasons; a relevance
+   explanation on a document that was just selected as a strong precedent
+   is a positive signal, not a warning, and shouldn't read like one. */
+.relevance-text {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 7px;
+}
+
 .breakdown-row {
   display: flex;
   gap: 14px;
