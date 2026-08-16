@@ -225,6 +225,14 @@ main.content {
   margin: 0 auto;
   padding: 36px 28px 72px;
   animation: fadeIn 0.25s var(--ease-out);
+  position: relative;
+  z-index: 1;
+}
+
+.app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
 }
 
 .page-header {
@@ -308,10 +316,18 @@ main.content {
   transition: border-color 0.15s var(--ease), background 0.15s var(--ease), box-shadow 0.15s var(--ease);
 }
 
-.dropzone:hover, .dropzone.dragover {
+.dropzone.dragover {
   border-color: var(--brass-soft);
   background: var(--brass-bg);
   box-shadow: inset 0 0 0 1px var(--brass-bg);
+}
+
+.dropzone:hover {
+  border-color: var(--brass-soft);
+  box-shadow:
+    0 0 0 1px var(--brass-soft),
+    0 0 18px 2px rgba(169, 117, 47, 0.25),
+    0 0 40px 6px rgba(199, 154, 85, 0.18);
 }
 
 .dropzone-icon {

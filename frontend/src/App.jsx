@@ -5,6 +5,7 @@ import DocumentLibrary from "./components/DocumentLibrary.jsx";
 import LineageGraph from "./components/LineageGraph.jsx";
 import SearchPage from "./components/SearchPage.jsx";
 import PreviewModal from "./components/PreviewModal.jsx";
+import SlicedWaves from "./components/SlicedWaves/SlicedWaves.jsx";
 import { useDocumentPreview } from "./hooks/useDocumentPreview.js";
 
 export default function App() {
@@ -33,6 +34,33 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <div className="app-bg">
+        <SlicedWaves
+          color1="#c79a55"
+          color2="#1b2430"
+          color3="#a9752f"
+          columns={14}
+          rows={8}
+          barThickness={0.08}
+          speed={0.25}
+          travel={0.7}
+          waveSpread={0.9}
+          rowOffset={1.0}
+          softness={0.12}
+          glow={0}
+          brightness={1.0}
+          contrast={1.0}
+          opacity={0.22}
+          orientation="horizontal"
+          alternate={false}
+          mouseInteraction={true}
+          mouseStrength={1}
+          mouseRadius={0.3}
+          grain={true}
+          grainIntensity={0.05}
+        />
+      </div>
+
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">P</span>
