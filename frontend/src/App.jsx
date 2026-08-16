@@ -1,34 +1,51 @@
-import React, { useEffect, useState } from "react";
-import { api } from "./api.js";
+import React, { useState } from "react";
 import UploadPanel from "./components/UploadPanel.jsx";
 import DocumentLibrary from "./components/DocumentLibrary.jsx";
 import LineageGraph from "./components/LineageGraph.jsx";
 import SearchPage from "./components/SearchPage.jsx";
 import PreviewModal from "./components/PreviewModal.jsx";
 import SlicedWaves from "./components/SlicedWaves/SlicedWaves.jsx";
+import Dock from "./components/Dock/Dock.jsx";
 import { useDocumentPreview } from "./hooks/useDocumentPreview.js";
+
+const ICON_PROPS = {
+  width: 18,
+  height: 18,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.6,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+};
+
+function LibraryIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
+    </svg>
+  );
+}
+
+const TAB_ITEMS = [
+  { key: "library", label: "Library", icon: <LibraryIcon /> },
+  { key: "search", label: "Search & Draft", icon: <SearchIcon /> },
+];
 
 export default function App() {
   const [tab, setTab] = useState("library");
   const [libraryView, setLibraryView] = useState("list");
-  const [apiUp, setApiUp] = useState(null);
-  const [docCount, setDocCount] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const preview = useDocumentPreview();
-
-  const checkHealth = async () => {
-    try {
-      const res = await api.health();
-      setApiUp(true);
-      setDocCount(res.documents_indexed);
-    } catch {
-      setApiUp(false);
-    }
-  };
-
-  useEffect(() => {
-    checkHealth();
-  }, [refreshKey]);
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
 
@@ -62,33 +79,18 @@ export default function App() {
       </div>
 
       <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">P</span>
-          <div className="brand-text">
-            <span className="brand-name">Precedent Bank</span>
-            <span className="brand-tag">MVP · The Lion's Pit 2026</span>
-          </div>
-        </div>
-        <nav className="tabs">
-          <button
-            className={`tab-btn ${tab === "library" ? "active" : ""}`}
-            onClick={() => setTab("library")}
-          >
-            Library
-          </button>
-          <button
-            className={`tab-btn ${tab === "search" ? "active" : ""}`}
-            onClick={() => setTab("search")}
-          >
-            Search &amp; Draft
-          </button>
-        </nav>
-        <div className="status-pill">
-          <span className={`status-dot ${apiUp === false ? "down" : ""}`} />
-          {apiUp === null && "checking API..."}
-          {apiUp === true && `API online · ${docCount} docs indexed`}
-          {apiUp === false && "API offline — start the backend on :8000"}
-        </div>
+        <Dock
+          items={TAB_ITEMS.map((t) => ({
+            icon: t.icon,
+            label: t.label,
+            onClick: () => setTab(t.key),
+            className: tab === t.key ? "active" : "",
+          }))}
+          panelHeight={64}
+          baseItemSize={56}
+          magnification={80}
+          distance={140}
+        />
       </header>
 
       <main className="content">

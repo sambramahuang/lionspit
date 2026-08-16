@@ -113,109 +113,76 @@ a { color: var(--brass); }
 }
 
 .topbar {
-  background: linear-gradient(180deg, var(--ink-soft), var(--ink) 65%);
-  color: var(--on-ink);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 15px 32px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 6px 20px -8px rgba(0, 0, 0, 0.35);
+  justify-content: center;
+  padding: 24px 32px;
   position: relative;
   z-index: 10;
 }
 
-.brand {
-  display: flex;
+/* Dock's own base rules live in Dock.css -- this repurposes it from a
+   floating bottom-of-screen panel into a compact inline topbar nav:
+   - dock-outer's height is normally driven entirely by an inline motion
+     style (its only child is absolutely positioned, so without this it
+     would collapse to 0px); fixing it keeps the topbar row from jumping
+     as items magnify on hover.
+   - dock-panel drops its "anchored to the bottom, grows upward" position
+     (built for floating over page content) for centering on a fixed
+     point, since it now sits inside a normal flex row.
+   - colors swap from Dock's hardcoded dark hex values to the app's own
+     ink/brass tokens, and an .active style is added since Dock has no
+     built-in concept of a selected item (it's a launcher, not a tab bar). */
+.dock-outer {
+  position: relative;
+  height: 64px !important;
+  margin: 0;
+}
+
+.dock-panel {
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
   align-items: center;
-  gap: 12px;
+  /* Extra horizontal padding only -- elongates the bar itself without
+     touching button/icon sizing (that's baseItemSize/magnification,
+     passed as props). */
+  padding: 0.35rem 1.5rem;
+  background-color: rgba(27, 36, 48, 0.4);
+  border-color: rgba(49, 60, 77, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
-.brand-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  background: linear-gradient(155deg, var(--brass-soft), var(--brass) 60%, var(--brass-dark));
-  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 14px;
-  color: #fff;
-  flex: none;
-}
-
-.brand-text {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.brand-name {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: 0.1px;
-}
-
-.brand-tag {
-  font-family: var(--font-mono);
-  font-size: 11px;
+/* Panel, unselected, and selected are all the same ink hue, differing
+   only in shade/opacity -- no brass or other accent color anywhere in
+   the dock. Selected reads as "selected" purely by being a lighter,
+   slightly more opaque shade of the same navy, not a different color. */
+.dock-item {
+  background-color: rgba(38, 47, 61, 0.3);
+  border-color: rgba(49, 60, 77, 0.4);
   color: var(--on-ink-muted);
-  letter-spacing: 0.4px;
+  transition: background-color 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 
-.tabs {
-  display: flex;
-  gap: 2px;
-  background: rgba(0, 0, 0, 0.16);
-  padding: 3px;
-  border-radius: 9px;
+.dock-item.active {
+  background-color: rgba(49, 60, 77, 0.55);
+  border-color: rgba(169, 178, 192, 0.35);
+  color: var(--on-ink);
 }
 
-.tab-btn {
-  background: transparent;
-  border: none;
-  color: var(--on-ink-muted);
-  font-family: var(--font-ui);
-  font-size: 13.5px;
-  font-weight: 500;
-  padding: 7px 16px;
-  border-radius: 7px;
-  cursor: pointer;
-  transition: color 0.15s var(--ease), background 0.15s var(--ease);
-}
-
-.tab-btn:hover { color: var(--on-ink); }
-
-.tab-btn.active {
-  color: var(--ink);
-  background: var(--brass-soft);
-  box-shadow: var(--shadow-xs);
-}
-
-.status-pill {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--on-ink-muted);
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--flag-green);
-  box-shadow: 0 0 0 3px rgba(63, 110, 82, 0.22);
-  display: inline-block;
-  transition: background 0.2s var(--ease), box-shadow 0.2s var(--ease);
-}
-.status-dot.down {
-  background: var(--flag-red);
-  box-shadow: 0 0 0 3px rgba(168, 69, 58, 0.22);
+.dock-label {
+  /* Dock.css positions this 1.5rem *above* its item (top: -1.5rem), built
+     for a bottom-of-screen dock with page content above it to render
+     into. In a top bar, "above" is off-screen past the viewport edge --
+     there's nothing above a top bar. Flip it to render below instead. */
+  top: auto;
+  bottom: -1.6rem;
+  border-color: rgba(49, 60, 77, 0.5);
+  background-color: rgba(27, 36, 48, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: var(--on-ink);
 }
 
 main.content {
