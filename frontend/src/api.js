@@ -1,4 +1,9 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+// Local dev runs the backend as a separate process on :8000. In production
+// (Vercel Services), frontend and backend share one domain via rewrites, so
+// API calls should stay relative -- an absolute localhost URL would try to
+// reach the visitor's own machine. VITE_API_BASE_URL still overrides either
+// way if set (checked with ?? so an explicit "" is respected, not skipped).
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {

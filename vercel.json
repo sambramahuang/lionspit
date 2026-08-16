@@ -1,21 +1,18 @@
 {
-  "buildCommand": "npm install --prefix frontend && npm run build --prefix frontend",
   "services": {
     "frontend": {
-      "root": "frontend",
+      "root": "frontend/",
       "framework": "vite",
       "buildCommand": "npm install && npm run build"
     },
     "backend": {
-      "root": "backend",
+      "root": "backend/",
       "runtime": "python@3.12",
-      "entrypoint": "api/index.py"
+      "entrypoint": "app.main:app"
     }
   },
   "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "backend"
-    }
+    { "source": "/api/(.*)", "destination": { "service": "backend" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
   ]
 }
