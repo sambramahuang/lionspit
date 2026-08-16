@@ -175,27 +175,40 @@ a { color: var(--brass); }
      touching button/icon sizing (that's baseItemSize/magnification,
      passed as props). */
   padding: 0.35rem 1.5rem;
-  background-color: rgba(27, 36, 48, 0.4);
-  border-color: rgba(49, 60, 77, 0.4);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background-color: rgba(27, 36, 48, 0.22);
+  border-color: rgba(49, 60, 77, 0.35);
+  /* A heavy blur smears an already-faint background into a flat wash
+     before the tint even applies -- light enough here to still soften
+     what's behind it (frosted-glass feel) without erasing it. */
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
 }
 
 /* Panel, unselected, and selected are all the same ink hue, differing
    only in shade/opacity -- no brass or other accent color anywhere in
    the dock. Selected reads as "selected" purely by being a lighter,
-   slightly more opaque shade of the same navy, not a different color. */
+   slightly more opaque shade of the same navy, not a different color.
+   Kept more opaque than the panel itself -- the panel being very
+   transparent is what lets the background show through the *bar*; the
+   buttons need enough contrast to keep their icons legible against
+   whatever's behind them (page background, not just the panel tint). */
 .dock-item {
-  background-color: rgba(38, 47, 61, 0.3);
-  border-color: rgba(49, 60, 77, 0.4);
+  background-color: rgba(38, 47, 61, 0.42);
+  border-color: rgba(49, 60, 77, 0.5);
   color: var(--on-ink-muted);
   transition: background-color 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 
 .dock-item.active {
-  background-color: rgba(49, 60, 77, 0.55);
-  border-color: rgba(169, 178, 192, 0.35);
+  background-color: rgba(49, 60, 77, 0.62);
+  border-color: rgba(169, 178, 192, 0.4);
   color: var(--on-ink);
+}
+
+/* Belt-and-suspenders: a faint dark halo behind the icon strokes so they
+   stay readable even if background/opacity gets tuned again later. */
+.dock-icon svg {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
 }
 
 .dock-label {
