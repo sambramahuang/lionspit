@@ -19,7 +19,13 @@ class Settings:
     # unlike Chroma's old bundled embedding model, this is just an HTTP call,
     # so it works the same in local dev and stateless serverless functions.
     OPENAI_EMBEDDING_MODEL: str = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    # DATABASE_URL is what local dev sets in .env. POSTGRES_URL is what
+    # Vercel's native Supabase integration auto-provisions when a Supabase
+    # project is linked to the Vercel project (found under Storage/
+    # Integrations) -- it's the pooled/transaction-mode connection string,
+    # same as what we want DATABASE_URL to be. Preferring DATABASE_URL
+    # first means an explicit .env value always wins if both are set.
+    DATABASE_URL: str = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL", "")
     CORS_ORIGINS: list[str] = [
         o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",") if o.strip()
     ]
