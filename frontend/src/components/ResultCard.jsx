@@ -19,17 +19,20 @@ export default function ResultCard({
     >
       <div className="result-head">
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-          {selectable && (
-            <input
-              type="checkbox"
-              checked={!!selected}
-              onChange={(event) => {
-                event.stopPropagation();
-                onToggle?.(item.doc_id);
-              }}
-              style={{ marginTop: 4 }}
-            />
-          )}
+          {/* Always reserve the checkbox's space, even on rejected/restricted
+              cards where it's not rendered interactive -- otherwise titles
+              start ~24px further left on those cards, and filenames don't
+              line up as you scan down the page across sections. */}
+          <input
+            type="checkbox"
+            checked={!!selected}
+            onChange={(event) => {
+              event.stopPropagation();
+              onToggle?.(item.doc_id);
+            }}
+            style={{ marginTop: 4, visibility: selectable ? "visible" : "hidden" }}
+            tabIndex={selectable ? 0 : -1}
+          />
           <div>
             <p className="result-title">{item.filename}</p>
             <div className="result-meta">

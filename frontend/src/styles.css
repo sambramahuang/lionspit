@@ -116,9 +116,34 @@ a { color: var(--brass); }
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 32px;
+  /* Vertical padding sized for the brand mark (96px), the tallest thing
+     in the bar -- at 24px this left only ~8px of clearance above/below
+     it, reading as cramped against the top edge. */
+  padding: 40px 32px;
   position: relative;
   z-index: 10;
+}
+
+/* Mirrors .status-pill's positioning on the opposite side -- absolutely
+   placed so it sits at the top-left independent of the Dock's centering. */
+.brand {
+  position: absolute;
+  top: 50%;
+  left: 32px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* No card chrome at all -- the logo's own alpha transparency (verified:
+   corners are fully transparent, only the fox+"Kitsu" mark is opaque)
+   means with no border/background here, only the mark itself is visible,
+   sitting directly on the page, free to tilt with nothing framing it. */
+.tilted-card-img {
+  border-radius: 0;
+  border: none;
+  background: transparent;
 }
 
 /* Absolutely positioned so it sits at the top-right independent of the
@@ -186,22 +211,20 @@ a { color: var(--brass); }
 
 /* Panel, unselected, and selected are all the same ink hue, differing
    only in shade/opacity -- no brass or other accent color anywhere in
-   the dock. Selected reads as "selected" purely by being a lighter,
-   slightly more opaque shade of the same navy, not a different color.
-   Kept more opaque than the panel itself -- the panel being very
-   transparent is what lets the background show through the *bar*; the
-   buttons need enough contrast to keep their icons legible against
-   whatever's behind them (page background, not just the panel tint). */
+   the dock. The gap between the two is widened here: unselected recedes
+   (more transparent, muted icon) and selected is clearly the most solid,
+   opaque thing in the bar -- against a moving background, a subtle
+   alpha difference alone read as "both buttons look the same gray." */
 .dock-item {
-  background-color: rgba(38, 47, 61, 0.42);
-  border-color: rgba(49, 60, 77, 0.5);
+  background-color: rgba(38, 47, 61, 0.22);
+  border-color: rgba(49, 60, 77, 0.4);
   color: var(--on-ink-muted);
   transition: background-color 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 
 .dock-item.active {
-  background-color: rgba(49, 60, 77, 0.62);
-  border-color: rgba(169, 178, 192, 0.4);
+  background-color: rgba(49, 60, 77, 0.85);
+  border-color: rgba(169, 178, 192, 0.5);
   color: var(--on-ink);
 }
 
@@ -697,6 +720,17 @@ input[type="range"] {
   white-space: pre-wrap;
 }
 
+.draft-page strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.draft-divider {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 20px 0;
+}
+
 .cite-badge {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -1036,4 +1070,31 @@ input[type="range"] {
 @media (max-width: 860px) {
   .draft-layout { grid-template-columns: 1fr; }
   .weights-panel { grid-template-columns: 1fr; }
+}
+
+/* Brand, Dock, and status-pill are all absolutely/rigidly positioned for
+   a single-row desktop topbar -- with no collision handling, they overlap
+   directly on top of each other on a narrow viewport. Below this width,
+   drop out of absolute positioning and stack vertically instead, and
+   shrink the logo mark (TiltedCard's dimensions are inline styles from
+   JSX props, hence the !important to win over them). */
+@media (max-width: 640px) {
+  .topbar {
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 20px 18px;
+  }
+
+  .brand,
+  .status-pill {
+    position: static;
+    transform: none;
+  }
+
+  .tilted-card-figure,
+  .tilted-card-inner,
+  .tilted-card-img {
+    width: 56px !important;
+    height: 56px !important;
+  }
 }

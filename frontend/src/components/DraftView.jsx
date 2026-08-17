@@ -1,22 +1,48 @@
 import React, { useState } from "react";
 import { api } from "../api.js";
 
-/** Splits draft text on [[n]] and [[GAP: ...]] markers and renders the
- * citation markers as clickable brass badges, so a lawyer can jump
- * straight from a clause to the precedent it came from. */
+/** The model writes plain-text drafts but reaches for **bold** naturally
+ * for headings/defined terms -- rendered literally as asterisks otherwise,
+ * which reads as broken in what's meant to be the polished, trustworthy
+ * output. Splits a plain-text run on **bold** spans into text/<strong>. */
+function renderInlineMarkdown(text, keyPrefix) {
+  const boldRegex = /\*\*(.+?)\*\*/g;
+  const nodes = [];
+  let lastIndex = 0;
+  let match;
+  let i = 0;
+
+  while ((match = boldRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) nodes.push(text.slice(lastIndex, match.index));
+    nodes.push(<strong key={`${keyPrefix}-b${i++}`}>{match[1]}</strong>);
+    lastIndex = boldRegex.lastIndex;
+  }
+  if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
+  return nodes;
+}
+
+/** Splits draft text on [[n]]/[[GAP: ...]] markers and standalone "---"
+ * section dividers (the model sometimes writes one before a trailing
+ * "Drafting notes" section), rendering markers as clickable brass badges
+ * and dividers as a real rule instead of three literal dashes. Plain-text
+ * runs in between also get markdown bold spans resolved (see above). */
 function renderDraftText(text, onCiteClick) {
   const parts = [];
-  const regex = /\[\[(GAP:[^\]]*|\d+)\]\]/g;
+  const regex = /\[\[(GAP:[^\]]*|\d+)\]\]|^[ \t]*-{3,}[ \t]*$/gm;
   let lastIndex = 0;
   let match;
   let key = 0;
 
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      parts.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
+      const segment = text.slice(lastIndex, match.index);
+      parts.push(<span key={key}>{renderInlineMarkdown(segment, `s${key}`)}</span>);
+      key++;
     }
     const token = match[1];
-    if (token.startsWith("GAP:")) {
+    if (token === undefined) {
+      parts.push(<hr key={key++} className="draft-divider" />);
+    } else if (token.startsWith("GAP:")) {
       parts.push(
         <span key={key++} className="gap-badge">gap: {token.slice(4).trim()}</span>
       );
@@ -29,7 +55,11 @@ function renderDraftText(text, onCiteClick) {
     }
     lastIndex = regex.lastIndex;
   }
-  if (lastIndex < text.length) parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
+  if (lastIndex < text.length) {
+    const segment = text.slice(lastIndex);
+    parts.push(<span key={key}>{renderInlineMarkdown(segment, `s${key}`)}</span>);
+    key++;
+  }
   return parts;
 }
 
@@ -58,7 +88,7 @@ export default function DraftView({ query, selectedDocIds, onCiteClick }) {
   };
 
   return (
-    <div className="card" style={{ marginTop: 10 }}>
+    <div className="card" style={{ marginTop: 30 }}>
       <div className="section-label" style={{ margin: "0 0 10px" }}>Draft from selected precedents</div>
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <input

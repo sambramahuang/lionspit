@@ -7,6 +7,7 @@ import SearchPage from "./components/SearchPage.jsx";
 import PreviewModal from "./components/PreviewModal.jsx";
 import SlicedWaves from "./components/SlicedWaves/SlicedWaves.jsx";
 import Dock from "./components/Dock/Dock.jsx";
+import TiltedCard from "./components/TiltedCard/TiltedCard.jsx";
 import { useDocumentPreview } from "./hooks/useDocumentPreview.js";
 
 const ICON_PROPS = {
@@ -91,6 +92,22 @@ export default function App() {
       </div>
 
       <header className="topbar">
+        <div className="brand">
+          <TiltedCard
+            imageSrc="/kitsu-logo.png"
+            altText="Kitsu AI"
+            captionText="Kitsu AI"
+            containerHeight="96px"
+            containerWidth="96px"
+            imageHeight="96px"
+            imageWidth="96px"
+            rotateAmplitude={14}
+            scaleOnHover={1.08}
+            showMobileWarning={false}
+            showTooltip={false}
+          />
+        </div>
+
         <Dock
           items={TAB_ITEMS.map((t) => ({
             icon: t.icon,

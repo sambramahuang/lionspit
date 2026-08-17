@@ -40,6 +40,22 @@ def call_llm_text(system: str, user: str, max_tokens: int = 1500, temperature: f
     return resp.choices[0].message.content or ""
 
 
+def embed_texts(texts: list[str]) -> list[list[float]]:
+    """Batch embedding call -- one request for N texts is both cheaper and
+    faster than N separate calls. Order of the returned vectors matches
+    the order of the input texts (OpenAI's API guarantees this via the
+    `index` field, which we sort on defensively)."""
+    if not texts:
+        return []
+    client = get_client()
+    resp = client.embeddings.create(model=settings.OPENAI_EMBEDDING_MODEL, input=texts)
+    return [d.embedding for d in sorted(resp.data, key=lambda d: d.index)]
+
+
+def embed_text(text: str) -> list[float]:
+    return embed_texts([text])[0]
+
+
 def call_llm_json(system: str, user: str, max_tokens: int = 1500) -> dict:
     """
     Completion where we've instructed the model (in the system prompt) to

@@ -1,108 +1,123 @@
 """
-Local vector store via ChromaDB. Uses Chroma's bundled local embedding
-model (all-MiniLM-L6-v2, runs on-device via onnxruntime) so semantic
-search works with zero extra API keys -- only document generation and
-metadata extraction touch the OpenAI API. Chroma downloads that small
-model from Hugging Face the first time you run it, so have internet on
-hand for that one-time setup.
-"""
-from functools import lru_cache
+Postgres + pgvector vector store (Supabase). Replaces the earlier local
+ChromaDB setup, which stored its index as a file on disk -- that worked
+locally but not on Vercel, where the filesystem is read-only outside
+/tmp and /tmp itself is wiped on every cold start, so every fresh
+instance started with an empty, per-instance index. A real hosted
+Postgres database is the same store for every user and every instance,
+which is the actual requirement ("consistent documents for every user").
 
-import chromadb
+Embeddings come from OpenAI's API (text-embedding-3-small, 1536-dim)
+rather than Chroma's bundled local model -- see llm_client.embed_text.
+That's also serverless-friendly: it's just an HTTP call, no model
+download/cache directory needed (no more HOME-redirect workaround).
+
+A new connection is opened per call rather than a single cached one --
+simpler and safer in a serverless context (no stale-connection-after-
+cold-start class of bugs to worry about), and fast enough at this scale.
+"""
+import json
+
+import psycopg
+from pgvector.psycopg import register_vector
 
 from app.config import settings
-
-COLLECTION_NAME = "precedents"
-
-
-@lru_cache(maxsize=1)
-def get_client() -> chromadb.PersistentClient:
-    return chromadb.PersistentClient(
-        path=settings.CHROMA_PERSIST_DIR,
-        settings=chromadb.config.Settings(anonymized_telemetry=False),
-    )
+from app.llm_client import embed_text
 
 
-def get_collection():
-    client = get_client()
-    return client.get_or_create_collection(
-        name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"},
-    )
+def _connect():
+    conn = psycopg.connect(settings.require_database_url())
+    register_vector(conn)
+    return conn
 
 
-def _flatten_metadata(meta: dict) -> dict:
-    """Chroma metadata values must be str/int/float/bool -- flatten Nones
-    and anything else to strings so ingestion never breaks on an edge case."""
-    flat = {}
-    for k, v in meta.items():
-        if v is None:
-            continue
-        if isinstance(v, (str, int, float, bool)):
-            flat[k] = v
-        else:
-            flat[k] = str(v)
-    return flat
+def _clean_metadata(meta: dict) -> dict:
+    """JSONB would happily store explicit nulls, but code throughout the
+    app (e.g. `meta.get("client_name", "")`) assumes an *absent* key
+    falls back to its default -- a stored null bypasses that fallback
+    since the key technically exists (str(None) == "None", not ""). This
+    matches the old Chroma vectorstore's behavior, which stripped None
+    values before storage for the same reason."""
+    return {k: v for k, v in meta.items() if v is not None}
 
 
 def add_document(doc_id: str, text: str, metadata: dict):
-    collection = get_collection()
-    collection.upsert(
-        ids=[doc_id],
-        documents=[text],
-        metadatas=[_flatten_metadata(metadata)],
-    )
+    embedding = embed_text(text)
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO documents (doc_id, text, metadata, embedding)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (doc_id) DO UPDATE
+            SET text = EXCLUDED.text, metadata = EXCLUDED.metadata, embedding = EXCLUDED.embedding
+            """,
+            (doc_id, text, json.dumps(_clean_metadata(metadata)), embedding),
+        )
 
 
 def query(query_text: str, n_results: int = 8):
-    collection = get_collection()
-    count = collection.count()
-    if count == 0:
+    """Shaped to match Chroma's old result format (nested single-query
+    lists) so search.py's existing unpacking code needs no changes.
+    pgvector's <=> operator is cosine distance, same convention Chroma
+    used, so search.py's `1 - distance` similarity math still holds."""
+    embedding = embed_text(query_text)
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT doc_id, text, metadata, embedding <=> %s::vector AS distance
+            FROM documents
+            ORDER BY distance
+            LIMIT %s
+            """,
+            (embedding, n_results),
+        ).fetchall()
+
+    if not rows:
         return {"ids": [[]], "documents": [[]], "metadatas": [[]], "distances": [[]]}
-    return collection.query(
-        query_texts=[query_text],
-        n_results=min(n_results, count),
-    )
+
+    ids, docs, metas, distances = [], [], [], []
+    for doc_id, text, metadata, distance in rows:
+        ids.append(doc_id)
+        docs.append(text)
+        metas.append(metadata)
+        distances.append(distance)
+    return {"ids": [ids], "documents": [docs], "metadatas": [metas], "distances": [distances]}
 
 
 def get_by_id(doc_id: str):
-    collection = get_collection()
-    res = collection.get(ids=[doc_id], include=["documents", "metadatas"])
-    if not res["ids"]:
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT doc_id, text, metadata FROM documents WHERE doc_id = %s",
+            (doc_id,),
+        ).fetchone()
+    if not row:
         return None
-    return {
-        "doc_id": res["ids"][0],
-        "text": res["documents"][0],
-        "metadata": res["metadatas"][0],
-    }
+    return {"doc_id": row[0], "text": row[1], "metadata": row[2]}
 
 
 def list_all():
-    collection = get_collection()
-    if collection.count() == 0:
-        return []
-    res = collection.get(include=["documents", "metadatas"])
-    out = []
-    for doc_id, text, meta in zip(res["ids"], res["documents"], res["metadatas"]):
-        out.append({"doc_id": doc_id, "text": text, "metadata": meta})
-    return out
+    with _connect() as conn:
+        rows = conn.execute("SELECT doc_id, text, metadata FROM documents").fetchall()
+    return [{"doc_id": r[0], "text": r[1], "metadata": r[2]} for r in rows]
 
 
 def increment_usage(doc_id: str):
     """Bumps a document's usage_count -- feeds the 'frequency' ranking
     signal (how often the firm actually reaches for this precedent)."""
-    record = get_by_id(doc_id)
-    if not record:
-        return
-    meta = dict(record["metadata"])
-    meta["usage_count"] = int(meta.get("usage_count", 0)) + 1
-    collection = get_collection()
-    collection.update(ids=[doc_id], metadatas=[_flatten_metadata(meta)])
+    with _connect() as conn:
+        conn.execute(
+            """
+            UPDATE documents
+            SET metadata = jsonb_set(
+                metadata, '{usage_count}',
+                to_jsonb(COALESCE((metadata->>'usage_count')::int, 0) + 1)
+            )
+            WHERE doc_id = %s
+            """,
+            (doc_id,),
+        )
 
 
 def reset():
-    client = get_client()
-    try:
-        client.delete_collection(COLLECTION_NAME)
-    except Exception:
-        pass
+    with _connect() as conn:
+        conn.execute("TRUNCATE TABLE documents")
