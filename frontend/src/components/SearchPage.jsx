@@ -17,7 +17,6 @@ export default function SearchPage({ onPreview }) {
   const [jurisdictionFilter, setJurisdictionFilter] = useState("");
   const [matterTypeFilter, setMatterTypeFilter] = useState("");
   const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
-  const [clearance, setClearance] = useState("standard");
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -38,7 +37,6 @@ export default function SearchPage({ onPreview }) {
         jurisdiction_filter: jurisdictionFilter || null,
         matter_type_filter: matterTypeFilter || null,
         weights,
-        viewer_clearance: clearance,
       });
       setResult(res);
       setSelectedIds(res.kept.map((k) => k.doc_id));
@@ -85,7 +83,6 @@ export default function SearchPage({ onPreview }) {
         jurisdictionFilter={jurisdictionFilter} setJurisdictionFilter={setJurisdictionFilter}
         matterTypeFilter={matterTypeFilter} setMatterTypeFilter={setMatterTypeFilter}
         weights={weights} setWeights={setWeights}
-        clearance={clearance} setClearance={setClearance}
         onSearch={runSearch} busy={busy}
       />
 

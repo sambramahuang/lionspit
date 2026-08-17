@@ -6,7 +6,7 @@ clause" step of the demo, and the main way the tool earns trust.
 """
 import re
 
-from app import vectorstore
+from app import matters, vectorstore
 from app.llm_client import call_llm_text
 from app.models import Citation, DraftRequest, DraftResponse
 
@@ -40,11 +40,15 @@ def _build_source_block(idx: int, doc_id: str, meta: dict, text: str) -> str:
     return header + "\n" + text[:4000]
 
 
-def generate_draft(req: DraftRequest) -> DraftResponse:
+def generate_draft(req: DraftRequest, user_email: str) -> DraftResponse:
+    # get_by_id bypasses /api/documents/{doc_id}'s wall check, so it's
+    # re-applied here -- otherwise a walled document's full text could leak
+    # into a draft via a doc_id the caller isn't otherwise allowed to see.
+    walls = matters.load_walls()
     records = []
     for doc_id in req.doc_ids:
         rec = vectorstore.get_by_id(doc_id)
-        if rec:
+        if rec and not matters.is_blocked(rec["metadata"], user_email, walls):
             records.append(rec)
 
     if not records:

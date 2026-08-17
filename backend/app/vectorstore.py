@@ -121,3 +121,50 @@ def increment_usage(doc_id: str):
 def reset():
     with _connect() as conn:
         conn.execute("TRUNCATE TABLE documents")
+        conn.execute("TRUNCATE TABLE matter_walls")
+
+
+def get_wall(matter_key: str):
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT matter_key, walled, allowed_emails, updated_by, updated_at "
+            "FROM matter_walls WHERE matter_key = %s",
+            (matter_key,),
+        ).fetchone()
+    return _wall_row_to_dict(row) if row else None
+
+
+def list_walls() -> dict:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT matter_key, walled, allowed_emails, updated_by, updated_at FROM matter_walls"
+        ).fetchall()
+    return {row[0]: _wall_row_to_dict(row) for row in rows}
+
+
+def set_wall(matter_key: str, walled: bool, allowed_emails: list[str], updated_by: str) -> dict:
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            INSERT INTO matter_walls (matter_key, walled, allowed_emails, updated_by, updated_at)
+            VALUES (%s, %s, %s, %s, now())
+            ON CONFLICT (matter_key) DO UPDATE
+            SET walled = EXCLUDED.walled,
+                allowed_emails = EXCLUDED.allowed_emails,
+                updated_by = EXCLUDED.updated_by,
+                updated_at = now()
+            RETURNING matter_key, walled, allowed_emails, updated_by, updated_at
+            """,
+            (matter_key, walled, allowed_emails, updated_by),
+        ).fetchone()
+    return _wall_row_to_dict(row)
+
+
+def _wall_row_to_dict(row) -> dict:
+    return {
+        "matter_key": row[0],
+        "walled": row[1],
+        "allowed_emails": row[2] or [],
+        "updated_by": row[3],
+        "updated_at": row[4].isoformat() if row[4] else None,
+    }

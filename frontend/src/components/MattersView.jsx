@@ -1,0 +1,146 @@
+import React, { useEffect, useState } from "react";
+import { api } from "../api.js";
+
+function EmailListEditor({ emails, onChange }) {
+  const [draft, setDraft] = useState("");
+  const add = () => {
+    const v = draft.trim().toLowerCase();
+    if (v) onChange([...new Set([...emails, v])]);
+    setDraft("");
+  };
+  return (
+    <div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+        {emails.map((e) => (
+          <span key={e} className="badge badge-unapproved">
+            {e}
+            <button
+              type="button"
+              style={{ marginLeft: 6, border: "none", background: "none", cursor: "pointer", color: "inherit" }}
+              onClick={() => onChange(emails.filter((x) => x !== e))}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+      <input
+        className="filter-input"
+        placeholder="Add email, press Enter"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            add();
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+export default function MattersView({ isPartner }) {
+  const [matters, setMatters] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(null);
+
+  const load = () => {
+    setLoading(true);
+    setError(null);
+    api.listMatters().then(setMatters).catch((e) => setError(e.message)).finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  const patch = (key, fn) =>
+    setMatters((prev) => prev.map((m) => (m.matter_key === key ? { ...m, wall: fn(m.wall) } : m)));
+
+  const save = async (m) => {
+    setSaving(m.matter_key);
+    setError(null);
+    try {
+      const updated = await api.setMatterWall(m.matter_key, {
+        walled: m.wall.walled,
+        allowed_emails: m.wall.allowed_emails,
+      });
+      patch(m.matter_key, () => updated);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  if (loading) return <p className="spinner-text">Loading matters...</p>;
+  if (error) return <div className="error-banner">{error}</div>;
+  if (matters.length === 0) {
+    return (
+      <div className="empty-state">
+        No matters yet — a matter forms once two or more documents share the same named parties and matter type.
+      </div>
+    );
+  }
+
+  return (
+    <div className="card">
+      <div className="section-label">
+        Matters <span className="count">{matters.length}</span>
+      </div>
+      <div style={{ overflowX: "auto" }}>
+        <table className="doc-table">
+          <thead>
+            <tr>
+              <th>Matter</th>
+              <th>Docs</th>
+              <th>Wall</th>
+              <th>Allowed viewers</th>
+              {isPartner && <th></th>}
+            </tr>
+          </thead>
+          <tbody>
+            {matters.map((m) => (
+              <tr key={m.matter_key}>
+                <td>{m.label}</td>
+                <td className="mono">{m.document_count}</td>
+                <td>
+                  {isPartner ? (
+                    <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <input
+                        type="checkbox"
+                        checked={m.wall.walled}
+                        onChange={(e) => patch(m.matter_key, (w) => ({ ...w, walled: e.target.checked }))}
+                      />
+                      walled
+                    </label>
+                  ) : m.wall.walled ? (
+                    <span className="badge badge-restricted">walled</span>
+                  ) : (
+                    <span className="mono" style={{ color: "var(--text-muted)" }}>open</span>
+                  )}
+                </td>
+                <td>
+                  {isPartner ? (
+                    <EmailListEditor
+                      emails={m.wall.allowed_emails}
+                      onChange={(emails) => patch(m.matter_key, (w) => ({ ...w, allowed_emails: emails }))}
+                    />
+                  ) : (
+                    m.wall.allowed_emails.join(", ") || "—"
+                  )}
+                </td>
+                {isPartner && (
+                  <td>
+                    <button className="btn btn-ghost" disabled={saving === m.matter_key} onClick={() => save(m)}>
+                      {saving === m.matter_key ? "Saving..." : "Save"}
+                    </button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

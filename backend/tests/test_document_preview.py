@@ -4,10 +4,14 @@ from fastapi.testclient import TestClient
 
 from app import vectorstore
 from app.main import app
+from auth_helpers import auth_headers, patch_supabase_auth
 
 
 class DocumentPreviewRouteTests(unittest.TestCase):
     def setUp(self):
+        self._auth_patcher = patch_supabase_auth()
+        self._auth_patcher.start()
+        self.addCleanup(self._auth_patcher.stop)
         vectorstore.reset()
         vectorstore.add_document(
             "doc-1",
@@ -25,7 +29,7 @@ class DocumentPreviewRouteTests(unittest.TestCase):
 
     def test_get_document_returns_text_for_preview(self):
         client = TestClient(app)
-        response = client.get("/api/documents/doc-1")
+        response = client.get("/api/documents/doc-1", headers=auth_headers())
 
         self.assertEqual(response.status_code, 200)
         body = response.json()

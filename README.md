@@ -5,17 +5,32 @@ searchable precedent bank"* — built for The Lion's Pit 2026, Challenge 3.
 
 Ingest messy files as-is → auto-tag them (no manual sorting) → search in
 plain English or legal terms → see exactly why each result ranked, was
-rejected, or was access-restricted → generate a draft with every clause
-footnoted back to its source.
+rejected, or was blocked by an ethical wall → generate a draft with every
+clause footnoted back to its source.
 
 ```
 legal-precedent-bank/
-├── backend/     FastAPI + ChromaDB + OpenAI API
+├── backend/     FastAPI + Postgres/pgvector (Supabase) + OpenAI API
 ├── frontend/    React + Vite
 └── README.md    you are here
 ```
 
-## 1. Backend setup
+## 1. Supabase setup (one-time)
+
+The app uses a Supabase project for both the document store (Postgres +
+pgvector) and login (Supabase Auth). From the Supabase dashboard:
+
+1. **Run `backend/sql/matter_walls.sql`** in the SQL Editor. (The
+   `documents` table is expected to already exist — see `backend/app/
+   vectorstore.py` for its shape if you're setting up a fresh project.)
+2. **Authentication → Providers → Email**: turn off "Confirm email" so
+   self-serve signup logs a user straight in — no email sending to set up
+   for a hackathon demo.
+3. Note down, from **Project Settings → API**: the Project URL, the
+   anon/publishable key, and (under JWT Settings) the JWT Secret. You'll
+   need these below.
+
+## 2. Backend setup
 
 ```bash
 cd backend
@@ -24,8 +39,16 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# open .env and paste in your real OPENAI_API_KEY
 ```
+
+Fill in `.env`:
+- `OPENAI_API_KEY` — your real key.
+- `DATABASE_URL` — Supabase Postgres connection string, "Transaction
+  pooler" mode (Project Settings → Database).
+- `SUPABASE_JWT_SECRET` — the JWT Secret from step 1.3 above. Every route
+  except `/api/health` returns 401 without this set.
+- `PARTNER_EMAILS` — comma-separated emails allowed to set/edit matter
+  walls (e.g. your own, for testing).
 
 Seed the demo corpus (17 deliberately messy sample documents — duplicate
 versions, an outdated tenancy agreement, a partner-approved shareholders'
@@ -50,41 +73,58 @@ uvicorn app.main:app --reload --port 8000
 Visit `http://localhost:8000/docs` for interactive API docs (FastAPI's
 built-in Swagger UI) — useful for demoing the API directly if you want to.
 
-## 2. Frontend setup
+## 3. Frontend setup
 
 In a second terminal:
 
 ```bash
 cd frontend
 npm install
-cp .env.example .env    # defaults to http://localhost:8000, edit if needed
+cp .env.example .env
+```
+
+Fill in `.env`: `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` from step
+1.3 above (`VITE_API_BASE_URL` can stay at its default unless your backend
+runs somewhere other than `localhost:8000`).
+
+```bash
 npm run dev
 ```
 
-Open `http://localhost:5173`.
+Open `http://localhost:5173` — you'll land on a login screen. Sign up with
+whatever email you put in `PARTNER_EMAILS` to get partner access (the
+"Matters" tab and the ability to wall a matter).
 
-## 3. Suggested demo flow
+## 4. Suggested demo flow
 
-1. **Library tab** — show the corpus is genuinely messy (open a couple of
+1. **Sign up / log in** — a plain email/password screen; no anonymous
+   access to anything in the app.
+2. **Library tab** — show the corpus is genuinely messy (open a couple of
    the raw `.txt` files in `backend/demo_corpus/` first if you want the
    judges to see the "before"). Click **Ingest**, watch each file get read
    and auto-tagged live, with no manual sorting.
-2. **Search & Draft tab** — run a query in plain English, e.g.
+3. **Search & Draft tab** — run a query in plain English, e.g.
    *"cap on a shareholder's liability if they breach the agreement"* —
    this should surface the Alpha Robotics shareholders' agreements even
    though the query never says "indemnity" or "SHA".
-3. Point out the **rejected** section: the outdated v1/v2 drafts get
+4. Point out the **rejected** section: the outdated v1/v2 drafts get
    flagged with a plain-English reason (superseded, not partner-approved),
    not just silently dropped.
-4. Toggle **viewer clearance** from standard to elevated and re-run the
-   same query — the restricted settlement memo appears/disappears. This is
-   the ethical-wall / access-control pillar made visible.
-5. Select the top precedent(s), hit **Generate draft**, and click a
-   citation badge in the draft — it scrolls to and highlights the exact
-   source document above. This is the trust-building centerpiece: nothing
-   in the draft is ungrounded, and anything the sources didn't cover shows
-   up as a flagged gap instead of an invented clause.
-6. Adjust a ranking weight slider (e.g. push "partner approval" up) and
+5. **Matters tab** (partner account) — wall the Alpha Robotics matter,
+   naming only a couple of allowed emails. Sign in as a different, unlisted
+   account in a private window and re-run the same search — the walled
+   matter's documents disappear from search/library/lineage entirely and
+   show up as "access restricted" instead. This is the ethical-wall /
+   access-control pillar made real: it's tied to a verified login, not a
+   toggle in the UI, and it's set per-matter by a partner, not inferred
+   from a document.
+6. Back on the partner account: select the top precedent(s), hit
+   **Generate draft**, and click a citation badge in the draft — it
+   scrolls to and highlights the exact source document above. This is the
+   trust-building centerpiece: nothing in the draft is ungrounded, and
+   anything the sources didn't cover shows up as a flagged gap instead of
+   an invented clause.
+7. Adjust a ranking weight slider (e.g. push "partner approval" up) and
    re-run the search to show a lawyer can tune what "best" means, live.
 
 ## How it works
@@ -95,18 +135,28 @@ Open `http://localhost:5173`.
   client type, transaction value, date, responsible lawyer, counterparty
   type, document type, completed/executed/draft-or-model status, version,
   partner approval, confidentiality, and a plain-English description).
-- **Search** (`backend/app/search.py`): semantic search via ChromaDB
-  (local embedding model, no extra API key needed), then a transparent
-  weighted score across similarity / recency / firm usage frequency /
-  partner approval / jurisdiction match. Documents in the same rough
-  "matter cluster" are compared against each other so an older or
-  non-approved version can be flagged as superseded with a stated reason,
-  rather than just silently ranked lower.
-- **Access control** (`backend/app/search.py`): documents tagged
-  `confidentiality: restricted` are filtered out unless the request's
-  `viewer_clearance` is `elevated` — a stand-in for a real permissions
-  system, structured so it's a small extension to wire up to real auth
-  later.
+- **Search** (`backend/app/search.py`): semantic search via Postgres +
+  pgvector (OpenAI embeddings), then a transparent weighted score across
+  similarity / recency / firm usage frequency / partner approval /
+  jurisdiction match. Documents in the same rough "matter cluster" are
+  compared against each other so an older or non-approved version can be
+  flagged as superseded with a stated reason, rather than just silently
+  ranked lower.
+- **Login** (`backend/app/auth.py`, `frontend/src/supabaseClient.js`):
+  Supabase Auth (email/password). Every API route except `/api/health`
+  requires a verified session; the backend checks the JWT itself rather
+  than trusting anything the client claims.
+- **Ethical walls** (`backend/app/matters.py`): access control is
+  matter-level, not per-document and not per-role — matching how this
+  actually works at a firm (default access is open; a wall is the
+  exception, applied to a specific matter by a partner, e.g. because of an
+  adverse-client conflict). A "matter" is the same cluster key
+  (`client_name` + `counterparty_name` + `matter_type` + `jurisdiction`)
+  the search-ranking and lineage-graph logic already group documents by.
+  Walling a matter sets an allow-list of emails; everyone else is blocked
+  from that matter's documents in search, the library, lineage, and
+  drafting alike — see `matters.is_blocked()`, the single check every one
+  of those code paths goes through.
 - **Drafting** (`backend/app/drafting.py`): the LLM drafts strictly from
   the selected source documents, inserting a `[[n]]` citation marker after
   every clause it draws on, and a `[[GAP: ...]]` marker instead of
@@ -117,25 +167,20 @@ Open `http://localhost:5173`.
 
 - **More corpus**: drop more files into `backend/demo_corpus/` and re-run
   the seed script — the brief calls for 20–50 documents in the live demo.
-- **Real auth**: `viewer_clearance` is currently a request field the
-  frontend sets directly. Swapping it for a real per-user role is
-  contained to `search.py` and the `/api/search` request.
-- **Conflict detector**: the metadata schema already captures
-  `client_type` / `counterparty_type` — a simple first pass is a name
-  match across those fields at ingest time, flagged the same way
-  `access_restricted` is now.
-- **Document graph / lineage view**: `document_date` + `version` +
-  the cluster grouping in `search.py` already contain what you'd need to
-  render a precedent's version history as a small graph, if you want to
-  build the map-style UI you discussed.
+- **Real conflict detection**: matter walls today are set by a partner by
+  hand. A first pass at automatic conflict flagging is a name match across
+  `client_name` / `counterparty_name` against existing matters at ingest
+  time, surfaced to a partner as a suggestion rather than auto-applied.
+- **Partner roles beyond an env var**: `PARTNER_EMAILS` in `backend/app/
+  config.py` is a static allowlist — fine for a demo, but a real version
+  would be a role stored per-user (e.g. in Supabase) with an admin screen
+  to grant/revoke it.
 
 ## Notes
 
-- No API keys are hardcoded anywhere. `backend/.env` and `frontend/.env`
-  are both gitignored — only the `.env.example` files are committed.
-- The vector store is a local ChromaDB folder (`backend/chroma_data/`,
-  gitignored). Delete it (or hit **Reset index** in the Library tab) to
-  start clean.
-- Chroma's local embedding model downloads once from Hugging Face on
-  first run — make sure you have internet the first time you seed or
-  ingest.
+- No API keys or secrets are hardcoded anywhere. `backend/.env` and
+  `frontend/.env` are both gitignored — only the `.env.example` files are
+  committed.
+- The vector store, matter/wall data, and auth all live in the same
+  Supabase project. **Reset index** in the Library tab clears both the
+  document store and all wall configuration, for a clean demo state.

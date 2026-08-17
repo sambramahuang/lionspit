@@ -1,3 +1,5 @@
+import { supabase } from "./supabaseClient.js";
+
 // Local dev runs the backend as a separate process on :8000. In production
 // (Vercel Services), frontend and backend share one domain via rewrites, so
 // API calls should stay relative -- an absolute localhost URL would try to
@@ -6,11 +8,14 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
 
 async function request(path, options = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const authHeader = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers: options.body instanceof FormData
-      ? options.headers
-      : { "Content-Type": "application/json", ...options.headers },
+      ? { ...authHeader, ...options.headers }
+      : { "Content-Type": "application/json", ...authHeader, ...options.headers },
   });
   if (!res.ok) {
     let detail = res.statusText;
@@ -28,6 +33,8 @@ async function request(path, options = {}) {
 export const api = {
   health: () => request("/api/health"),
 
+  me: () => request("/api/me"),
+
   listDocuments: () => request("/api/documents"),
 
   getDocument: (docId) => request(`/api/documents/${encodeURIComponent(docId)}`),
@@ -35,6 +42,14 @@ export const api = {
   resetDocuments: () => request("/api/documents", { method: "DELETE" }),
 
   lineage: () => request("/api/lineage"),
+
+  listMatters: () => request("/api/matters"),
+
+  setMatterWall: (matterKey, payload) =>
+    request(`/api/matters/${encodeURIComponent(matterKey)}/wall`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
   ingest: (files) => {
     const form = new FormData();

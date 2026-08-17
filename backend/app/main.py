@@ -2,10 +2,11 @@
 FastAPI entrypoint. Run with:  uvicorn app.main:app --reload --port 8000
 (from inside backend/, with your virtualenv active and .env filled in).
 """
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import Depends, FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import ingestion, search as search_module, vectorstore
+from app import ingestion, matters, search as search_module, vectorstore
+from app.auth import CurrentUser, get_current_user, require_partner
 from app.config import settings
 from app.drafting import generate_draft
 from app.models import (
@@ -14,6 +15,10 @@ from app.models import (
     DraftResponse,
     IngestResult,
     LineageResponse,
+    MatterSummary,
+    MatterWallInfo,
+    MatterWallRequest,
+    MeResponse,
     SearchRequest,
     SearchResponse,
 )
@@ -34,8 +39,13 @@ def health():
     return {"status": "ok", "documents_indexed": len(vectorstore.list_all())}
 
 
+@app.get("/api/me", response_model=MeResponse)
+def me(user: CurrentUser = Depends(get_current_user)):
+    return MeResponse(email=user.email, is_partner=user.is_partner)
+
+
 @app.post("/api/ingest", response_model=list[IngestResult])
-async def ingest_documents(files: list[UploadFile] = File(...)):
+async def ingest_documents(files: list[UploadFile] = File(...), _user: CurrentUser = Depends(get_current_user)):
     """
     Accepts one or more files, extracts text, auto-tags metadata via
     the LLM, and indexes each one. No manual tagging or reorganizing --
@@ -65,10 +75,13 @@ async def ingest_documents(files: list[UploadFile] = File(...)):
 
 
 @app.get("/api/documents", response_model=list[DocumentRecord])
-def list_documents():
+def list_documents(user: CurrentUser = Depends(get_current_user)):
     records = vectorstore.list_all()
+    walls = matters.load_walls()
     out = []
     for r in records:
+        if matters.is_blocked(r["metadata"], user.email, walls):
+            continue
         meta = r["metadata"]
         out.append(DocumentRecord(
             doc_id=r["doc_id"],
@@ -81,10 +94,12 @@ def list_documents():
 
 
 @app.get("/api/documents/{doc_id}")
-def get_document(doc_id: str):
+def get_document(doc_id: str, user: CurrentUser = Depends(get_current_user)):
     record = vectorstore.get_by_id(doc_id)
     if record is None:
         raise HTTPException(404, "document not found")
+    if matters.is_blocked(record["metadata"], user.email, matters.load_walls()):
+        raise HTTPException(403, "This matter is walled off. You don't have access to view it.")
 
     meta = record["metadata"]
     return {
@@ -96,27 +111,38 @@ def get_document(doc_id: str):
 
 
 @app.delete("/api/documents")
-def reset_documents():
+def reset_documents(_user: CurrentUser = Depends(get_current_user)):
     vectorstore.reset()
     return {"status": "reset"}
 
 
 @app.get("/api/lineage", response_model=LineageResponse)
-def lineage():
+def lineage(user: CurrentUser = Depends(get_current_user)):
     """Corpus-wide version-history graph: one cluster per matter, current
     document at the hub, every other version pointing to it with a reason."""
-    return search_module.compute_lineage()
+    return search_module.compute_lineage(user.email)
+
+
+@app.get("/api/matters", response_model=list[MatterSummary])
+def list_matters(user: CurrentUser = Depends(get_current_user)):
+    return matters.summarize(user.email, user.is_partner)
+
+
+@app.post("/api/matters/{matter_key}/wall", response_model=MatterWallInfo)
+def set_matter_wall(matter_key: str, req: MatterWallRequest, user: CurrentUser = Depends(require_partner)):
+    allowed = sorted({e.strip().lower() for e in req.allowed_emails if e.strip()})
+    return vectorstore.set_wall(matter_key, req.walled, allowed, user.email)
 
 
 @app.post("/api/search", response_model=SearchResponse)
-def search(req: SearchRequest):
+def search(req: SearchRequest, user: CurrentUser = Depends(get_current_user)):
     if not req.query.strip():
         raise HTTPException(400, "query must not be empty")
-    return search_module.run_search(req)
+    return search_module.run_search(req, user.email)
 
 
 @app.post("/api/draft", response_model=DraftResponse)
-def draft(req: DraftRequest):
+def draft(req: DraftRequest, user: CurrentUser = Depends(get_current_user)):
     if not req.doc_ids:
         raise HTTPException(400, "doc_ids must not be empty")
-    return generate_draft(req)
+    return generate_draft(req, user.email)

@@ -32,6 +32,24 @@ class Settings:
     # Allow all origins in development, restrict in production via environment variable
     IS_DEVELOPMENT: bool = os.getenv("ENVIRONMENT", "development") == "development"
 
+    # app.auth verifies a caller's bearer token by asking Supabase's own
+    # Auth API whether it's valid (GET /auth/v1/user), rather than decoding
+    # the JWT locally -- Supabase signs tokens with whichever algorithm a
+    # given project is configured for (the legacy shared HS256 secret, or
+    # newer asymmetric ES256 signing keys), and there's no one algorithm
+    # this backend could safely hardcode. SUPABASE_URL/SUPABASE_ANON_KEY
+    # are the same values the frontend already uses (VITE_SUPABASE_URL /
+    # VITE_SUPABASE_ANON_KEY) -- the anon key is a public, non-sensitive
+    # identifier, not a secret.
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY", "")
+    # Partner status (who may set/edit a matter's ethical wall) is a static
+    # allowlist, not a DB table -- comma-separated verified emails,
+    # lower-cased for case-insensitive comparison.
+    PARTNER_EMAILS: set[str] = {
+        e.strip().lower() for e in os.getenv("PARTNER_EMAILS", "").split(",") if e.strip()
+    }
+
     def require_api_key(self) -> str:
         if not self.OPENAI_API_KEY:
             raise RuntimeError(
@@ -39,6 +57,24 @@ class Settings:
                 "backend/.env and add your key."
             )
         return self.OPENAI_API_KEY
+
+    def require_supabase_url(self) -> str:
+        if not self.SUPABASE_URL:
+            raise RuntimeError(
+                "SUPABASE_URL is not set. Copy it from the Supabase "
+                "dashboard (Project Settings -> API -> Project URL) into "
+                "backend/.env."
+            )
+        return self.SUPABASE_URL
+
+    def require_supabase_anon_key(self) -> str:
+        if not self.SUPABASE_ANON_KEY:
+            raise RuntimeError(
+                "SUPABASE_ANON_KEY is not set. Copy it from the Supabase "
+                "dashboard (Project Settings -> API -> anon/public key) "
+                "into backend/.env."
+            )
+        return self.SUPABASE_ANON_KEY
 
     def require_database_url(self) -> str:
         if not self.DATABASE_URL:

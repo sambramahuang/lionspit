@@ -14,7 +14,7 @@ Flow (mirrors the demo script):
 from collections import defaultdict
 from datetime import datetime
 
-from app import vectorstore
+from app import matters, vectorstore
 from app.llm_client import call_llm_json
 from app.models import (
     DocumentMetadata,
@@ -102,36 +102,7 @@ def _normalize(values: dict) -> dict:
     return {k: (v - lo) / (hi - lo) for k, v in values.items()}
 
 
-def _cluster_key(meta: dict) -> str:
-    """Same-matter grouping so we can compare versions against each other
-    rather than against the whole corpus. Requires matching named parties --
-    matter_type/jurisdiction alone are category-level, not matter-level, so
-    two unrelated clients' documents of the same type (e.g. two different
-    companies' shareholders' agreements) must never merge into one lineage.
-
-    Matches on the *unordered set* of client_name + counterparty_name rather
-    than client_name alone: when a document names two parties, extraction
-    can't always tell which one is "the client" (e.g. a tenancy renewal
-    might get filed with the tenant as client_name while the original lease
-    got filed with the landlord as client_name) -- matching on the pair is
-    robust to that, since both documents still name the same two parties.
-
-    When no party name is available there isn't enough signal to safely
-    group the document with anything, so it gets a key unique to itself."""
-    parties = sorted({
-        p for p in (
-            str(meta.get("client_name", "")).lower().strip(),
-            str(meta.get("counterparty_name", "")).lower().strip(),
-        ) if p
-    })
-    matter = str(meta.get("matter_type", "")).lower().strip()
-    if not parties or not matter:
-        return f"__unclustered__|{meta.get('filename', '')}"
-    jurisdiction = str(meta.get("jurisdiction", "")).lower().strip()
-    return "|".join(parties + [matter, jurisdiction])
-
-
-def run_search(req) -> SearchResponse:
+def run_search(req, user_email: str) -> SearchResponse:
     raw = vectorstore.query(req.query, n_results=max(req.candidate_pool, 12))
     ids = raw["ids"][0]
     docs = raw["documents"][0]
@@ -148,16 +119,17 @@ def run_search(req) -> SearchResponse:
             "similarity": similarity,
         })
 
-    # --- Step 1: ethical wall / confidentiality filter -----------------
+    # --- Step 1: matter-level ethical wall ------------------------------
+    walls = matters.load_walls()
     access_restricted = []
     visible = []
     for c in candidates:
-        if c["meta"].get("confidentiality") == "restricted" and req.viewer_clearance != "elevated":
+        if matters.is_blocked(c["meta"], user_email, walls):
             access_restricted.append(RejectedItem(
                 doc_id=c["doc_id"],
                 filename=c["meta"].get("filename", c["doc_id"]),
                 metadata=DocumentMetadata(**c["meta"]),
-                reason="Restricted document. Requires elevated access clearance to view.",
+                reason="This matter is walled off. You don't have access to view it.",
             ))
         else:
             visible.append(c)
@@ -214,7 +186,7 @@ def run_search(req) -> SearchResponse:
     # --- Step 4: detect clearly superseded / non-approved documents ----
     clusters = defaultdict(list)
     for c in visible:
-        clusters[_cluster_key(c["meta"])].append(c)
+        clusters[matters.cluster_key(c["meta"])].append(c)
 
     rejected_ids = set()
     rejected_items = []
@@ -324,18 +296,23 @@ def _supersession_reason(current_meta: dict, other_meta: dict) -> str:
     return "; ".join(reasons) if reasons else "earlier document in the same matter"
 
 
-def compute_lineage() -> LineageResponse:
+def compute_lineage(user_email: str) -> LineageResponse:
     """Corpus-wide view of the same matter-clustering + supersession logic
     run_search uses per-query, exposed as a standalone graph: one cluster
     per matter (matter_type + practice_area + jurisdiction), with the
     "current" document at the hub and every other version pointing to it
     with a plain-English reason. Documents with no cluster-mate are listed
-    separately rather than force-fit into a graph with nothing to show."""
-    records = vectorstore.list_all()
+    separately rather than force-fit into a graph with nothing to show.
+
+    Walled matters are excluded entirely before clustering starts, same as
+    run_search's access_restricted step, so a walled matter's documents
+    never surface in this view for someone outside its allow-list."""
+    walls = matters.load_walls()
+    records = [r for r in vectorstore.list_all() if not matters.is_blocked(r["metadata"], user_email, walls)]
 
     grouped = defaultdict(list)
     for r in records:
-        grouped[_cluster_key(r["metadata"])].append(r)
+        grouped[matters.cluster_key(r["metadata"])].append(r)
 
     clusters = []
     standalone = []

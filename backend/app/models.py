@@ -67,10 +67,6 @@ class SearchRequest(BaseModel):
     weights: RankingWeights = Field(default_factory=RankingWeights)
     candidate_pool: int = 8
     keep_top: int = 2
-    # No real auth in this MVP -- this stands in for "which ethical wall
-    # does the requesting lawyer sit behind". "elevated" can see documents
-    # marked confidentiality="restricted"; "standard" cannot.
-    viewer_clearance: str = "standard"
 
 
 class SearchResultItem(BaseModel):
@@ -96,7 +92,7 @@ class SearchResponse(BaseModel):
     kept: list[SearchResultItem]           # the strongest precedents, selected for drafting
     other_candidates: list[SearchResultItem]  # surfaced but not selected -- browsable/filterable
     rejected: list[RejectedItem]            # outdated / superseded / not partner-approved, with reasons
-    access_restricted: list[RejectedItem]   # blocked by confidentiality + viewer_clearance, not content
+    access_restricted: list[RejectedItem]   # blocked by a matter-level ethical wall, not content
 
 
 class LineageNode(BaseModel):
@@ -122,6 +118,31 @@ class LineageCluster(BaseModel):
 class LineageResponse(BaseModel):
     clusters: list[LineageCluster]
     standalone: list[LineageNode]  # documents with no other version in their matter cluster
+
+
+class MeResponse(BaseModel):
+    email: str
+    is_partner: bool
+
+
+class MatterWallInfo(BaseModel):
+    matter_key: str
+    walled: bool = False
+    allowed_emails: list[str] = Field(default_factory=list)
+    updated_by: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class MatterWallRequest(BaseModel):
+    walled: bool
+    allowed_emails: list[str] = Field(default_factory=list)
+
+
+class MatterSummary(BaseModel):
+    matter_key: str
+    label: str
+    document_count: int
+    wall: MatterWallInfo
 
 
 class DraftRequest(BaseModel):

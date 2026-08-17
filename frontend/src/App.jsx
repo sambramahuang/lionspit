@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { api } from "./api.js";
+import { supabase } from "./supabaseClient.js";
+import Auth from "./components/Auth.jsx";
+import MattersView from "./components/MattersView.jsx";
 import UploadPanel from "./components/UploadPanel.jsx";
 import DocumentLibrary from "./components/DocumentLibrary.jsx";
 import LineageGraph from "./components/LineageGraph.jsx";
@@ -38,12 +41,23 @@ function SearchIcon() {
   );
 }
 
+function MattersIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <path d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7l8-4z" />
+    </svg>
+  );
+}
+
 const TAB_ITEMS = [
   { key: "library", label: "Library", icon: <LibraryIcon /> },
   { key: "search", label: "Search & Draft", icon: <SearchIcon /> },
+  { key: "matters", label: "Matters", icon: <MattersIcon /> },
 ];
 
 export default function App() {
+  const [session, setSession] = useState(undefined); // undefined = checking, null = signed out
+  const [me, setMe] = useState(null);
   const [tab, setTab] = useState("library");
   const [libraryView, setLibraryView] = useState("list");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -54,13 +68,31 @@ export default function App() {
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!session) {
+      setMe(null);
+      return;
+    }
+    api.me().then(setMe).catch(() => setMe(null));
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
     api.health()
       .then((res) => {
         setApiUp(true);
         setDocCount(res.documents_indexed);
       })
       .catch(() => setApiUp(false));
-  }, [refreshKey]);
+  }, [session, refreshKey]);
+
+  if (session === undefined) return <p className="spinner-text">Loading...</p>;
+  if (!session) return <Auth />;
 
   return (
     <div className="app-shell">
@@ -121,7 +153,9 @@ export default function App() {
           distance={140}
         />
 
-        <div className="status-pill">
+        <div className="status-pill" style={{ gap: 10 }}>
+          <span className="mono" style={{ color: "var(--text-muted)" }}>{me?.email}</span>
+          <button className="btn btn-ghost" onClick={() => supabase.auth.signOut()}>Sign out</button>
           <span className={`status-dot ${apiUp === false ? "down" : ""}`} />
           {apiUp === null && "checking..."}
           {apiUp === true && `${docCount} docs indexed`}
@@ -168,6 +202,7 @@ export default function App() {
         )}
 
         {tab === "search" && <SearchPage onPreview={preview.openPreview} />}
+        {tab === "matters" && <MattersView isPartner={!!me?.is_partner} />}
       </main>
 
       <PreviewModal

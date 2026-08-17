@@ -13,7 +13,6 @@ export default function SearchPanel({
   jurisdictionFilter, setJurisdictionFilter,
   matterTypeFilter, setMatterTypeFilter,
   weights, setWeights,
-  clearance, setClearance,
   onSearch, busy,
 }) {
   const updateWeight = (key, value) => {
@@ -54,15 +53,6 @@ export default function SearchPanel({
           value={matterTypeFilter}
           onChange={(e) => setMatterTypeFilter(e.target.value)}
         />
-        <select
-          className="filter-input"
-          style={{ width: 200 }}
-          value={clearance}
-          onChange={(e) => setClearance(e.target.value)}
-        >
-          <option value="standard">Viewer: standard access</option>
-          <option value="elevated">Viewer: elevated access</option>
-        </select>
       </div>
 
       <div className="section-label" style={{ margin: "18px 0 4px" }}>Ranking weights</div>
