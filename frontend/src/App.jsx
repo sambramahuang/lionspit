@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "./api.js";
-import { supabase } from "./supabaseClient.js";
+import { supabase, supabaseConfigError } from "./supabaseClient.js";
 import Auth from "./components/Auth.jsx";
 import MattersView from "./components/MattersView.jsx";
 import UploadPanel from "./components/UploadPanel.jsx";
@@ -90,6 +90,14 @@ export default function App() {
       })
       .catch(() => setApiUp(false));
   }, [session, refreshKey]);
+
+  if (supabaseConfigError) {
+    return (
+      <div className="app-shell" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <div className="card error-banner" style={{ maxWidth: 480 }}>{supabaseConfigError}</div>
+      </div>
+    );
+  }
 
   if (session === undefined) return <p className="spinner-text">Loading...</p>;
   if (!session) return <Auth />;
