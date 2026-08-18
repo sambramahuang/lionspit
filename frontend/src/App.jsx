@@ -3,6 +3,7 @@ import { api } from "./api.js";
 import { supabase, supabaseConfigError } from "./supabaseClient.js";
 import Auth from "./components/Auth.jsx";
 import MattersView from "./components/MattersView.jsx";
+import PageWipe from "./components/PageWipe.jsx";
 import StartHereView from "./components/StartHereView.jsx";
 import UploadPanel from "./components/UploadPanel.jsx";
 import DocumentLibrary from "./components/DocumentLibrary.jsx";
@@ -13,6 +14,9 @@ import SlicedWaves from "./components/SlicedWaves/SlicedWaves.jsx";
 import Dock from "./components/Dock/Dock.jsx";
 import TiltedCard from "./components/TiltedCard/TiltedCard.jsx";
 import { useDocumentPreview } from "./hooks/useDocumentPreview.js";
+
+const prefersReducedMotion =
+  typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 const ICON_PROPS = {
   width: 18,
@@ -70,6 +74,11 @@ export default function App() {
   const [session, setSession] = useState(undefined); // undefined = checking, null = signed out
   const [me, setMe] = useState(null);
   const [tab, setTab] = useState("start");
+  // What's actually rendered -- lags behind `tab` during a wipe so the
+  // content swap happens while the panel fully covers the screen, not
+  // visibly mid-transition. Equal to `tab` outside of a transition.
+  const [displayedTab, setDisplayedTab] = useState("start");
+  const [wipePhase, setWipePhase] = useState(null); // null | "covering" | "revealing"
   const [libraryView, setLibraryView] = useState("list");
   const [refreshKey, setRefreshKey] = useState(0);
   const [apiUp, setApiUp] = useState(null);
@@ -77,6 +86,16 @@ export default function App() {
   const preview = useDocumentPreview();
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
+
+  const changeTab = (next) => {
+    if (next === tab || wipePhase) return; // ignore repeats and mid-transition clicks
+    setTab(next);
+    if (prefersReducedMotion) {
+      setDisplayedTab(next);
+      return;
+    }
+    setWipePhase("covering");
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -163,7 +182,7 @@ export default function App() {
           items={TAB_ITEMS.map((t) => ({
             icon: t.icon,
             label: t.label,
-            onClick: () => setTab(t.key),
+            onClick: () => changeTab(t.key),
             className: tab === t.key ? "active" : "",
           }))}
           panelHeight={64}
@@ -183,11 +202,11 @@ export default function App() {
       </header>
 
       <main className="content">
-        {tab === "start" && (
-          <StartHereView onPreview={preview.openPreview} onGoToSearch={() => setTab("search")} />
+        {displayedTab === "start" && (
+          <StartHereView onPreview={preview.openPreview} onGoToSearch={() => changeTab("search")} />
         )}
 
-        {tab === "library" && (
+        {displayedTab === "library" && (
           <>
             <div className="page-header">
               <h1 className="page-title">Document library</h1>
@@ -224,9 +243,20 @@ export default function App() {
           </>
         )}
 
-        {tab === "search" && <SearchPage onPreview={preview.openPreview} />}
-        {tab === "matters" && <MattersView isPartner={!!me?.is_partner} />}
+        {displayedTab === "search" && <SearchPage onPreview={preview.openPreview} />}
+        {displayedTab === "matters" && <MattersView isPartner={!!me?.is_partner} />}
       </main>
+
+      {wipePhase && (
+        <PageWipe
+          phase={wipePhase}
+          onCoverComplete={() => {
+            setDisplayedTab(tab);
+            setWipePhase("revealing");
+          }}
+          onRevealComplete={() => setWipePhase(null)}
+        />
+      )}
 
       <PreviewModal
         open={preview.open}

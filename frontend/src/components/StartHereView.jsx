@@ -1,5 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
+import {
+  BentoCard,
+  BentoGrid,
+  CiteGlyph,
+  ClauseGlyph,
+  LineageGlyph,
+  ReasonGlyph,
+  SearchGlyph,
+  WallGlyph,
+} from "./BentoGrid.jsx";
 
 const TOP_PER_GROUP = 3;
 const TOP_FIRMWIDE = 5;
@@ -62,32 +72,47 @@ export default function StartHereView({ onPreview, onGoToSearch }) {
         </p>
       </div>
 
-      <div className="card" style={{ marginBottom: 24 }}>
-        <div className="section-label" style={{ margin: "0 0 10px" }}>What this tool does</div>
-        <div className="start-here-explainer">
-          <div>
-            <b>Search in plain English</b>
-            <p>No need to know legal terms of art — describe what you need and the system finds it.</p>
-          </div>
-          <div>
-            <b>See why, not just what</b>
-            <p>Every result explains why it ranked, why something was rejected, or why it's restricted.</p>
-          </div>
-          <div>
-            <b>Find the exact clause</b>
-            <p>Switch to clause search on the Search &amp; Draft tab to find one provision, not a whole document.</p>
-          </div>
-          <div>
-            <b>Draft with citations</b>
-            <p>Every generated clause traces back to its source — nothing is invented.</p>
-          </div>
-        </div>
-        {onGoToSearch && (
-          <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={onGoToSearch}>
-            Go to Search &amp; Draft
-          </button>
-        )}
-      </div>
+      <div className="section-label" style={{ margin: "0 0 10px" }}>What this tool does</div>
+      <BentoGrid>
+        <BentoCard
+          wide
+          icon={<SearchGlyph />}
+          name="Search in plain English"
+          description='No need to know legal terms of art — describe what you need ("cap on founder liability if they breach the agreement") and the system finds it, ranked by similarity, recency, firm usage, partner approval, and jurisdiction match.'
+        />
+        <BentoCard
+          icon={<ClauseGlyph />}
+          name="Find the exact clause"
+          description="Switch to clause search to find one provision — an indemnity cap, a notice period — instead of a whole document you'd have to read through."
+        />
+        <BentoCard
+          icon={<WallGlyph />}
+          name="Ethical walls, enforced"
+          description="Access is matter-level and tied to a verified login, not a toggle anyone can flip. A walled matter is invisible in search, library, and lineage to anyone not on its list."
+        />
+        <BentoCard
+          icon={<ReasonGlyph />}
+          name="See why, not just what"
+          description="Every result explains itself: why it ranked, why an outdated version was rejected, or why it's restricted — never a silent drop."
+        />
+        <BentoCard
+          icon={<LineageGlyph />}
+          name="Version history, mapped"
+          description="Documents from the same matter are clustered automatically, with the current version at the hub and every superseded draft explained."
+        />
+        <BentoCard
+          wide
+          icon={<CiteGlyph />}
+          name="Draft with citations"
+          description="Generate a first draft strictly from the sources you select — every clause traces back to its exact source document and excerpt, and anything the sources don't cover is flagged as a gap instead of invented."
+        />
+      </BentoGrid>
+
+      {onGoToSearch && (
+        <button className="btn btn-primary" style={{ margin: "16px 0 24px" }} onClick={onGoToSearch}>
+          Go to Search &amp; Draft
+        </button>
+      )}
 
       {error && <div className="error-banner">{error}</div>}
       {loading && <p className="spinner-text">Loading...</p>}

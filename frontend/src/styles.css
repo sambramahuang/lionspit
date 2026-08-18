@@ -32,6 +32,15 @@
   --flag-lock: #635087;
   --flag-lock-bg: #ece8f4;
 
+  /* Ink-glass chrome -- the Dock's own translucent-ink language (see
+     Dock.css overrides below), extended to other controls/chrome so the
+     nav doesn't read as a visual outlier. Reserved for chrome (buttons,
+     toggles, pills, inputs) -- content cards stay on paper; that split is
+     deliberate, not an oversight (see comment above). */
+  --ink-glass: rgba(27, 36, 48, 0.05);
+  --ink-glass-hover: rgba(27, 36, 48, 0.09);
+  --ink-glass-border: rgba(27, 36, 48, 0.16);
+
   --shadow-xs: 0 1px 2px rgba(27, 36, 48, 0.06);
   --shadow-sm: 0 1px 3px rgba(27, 36, 48, 0.08), 0 1px 2px rgba(27, 36, 48, 0.04);
   --shadow-md: 0 10px 28px -6px rgba(27, 36, 48, 0.14), 0 2px 8px rgba(27, 36, 48, 0.06);
@@ -112,6 +121,23 @@ a { color: var(--brass); }
   flex-direction: column;
 }
 
+/* Page-transition wipe (see PageWipe.jsx) -- a solid panel, not a
+   crossfade, so a tab switch reads as one deliberate sweep rather than
+   ambient motion. A thin brass leading edge ties it back to the app's
+   own citation-margin motif instead of being a plain block of color. */
+.page-wipe {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--ink);
+  pointer-events: none;
+  box-shadow: inset -2px 0 0 var(--brass-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-wipe { display: none; }
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -147,8 +173,10 @@ a { color: var(--brass); }
 }
 
 /* Absolutely positioned so it sits at the top-right independent of the
-   Dock's own centering -- minimal by design: a small dot and short text,
-   no card/background chrome, sitting directly on the page. */
+   Dock's own centering. Now carries the Dock's own translucent-ink pill
+   chrome (it holds a Sign out button, not just a status dot, so grouping
+   it as a matching pill reads as "part of the same nav" rather than a
+   loose label floating next to it). */
 .status-pill {
   position: absolute;
   top: 50%;
@@ -157,6 +185,10 @@ a { color: var(--brass); }
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 8px 14px;
+  background: var(--ink-glass);
+  border: 1px solid var(--ink-glass-border);
+  border-radius: 999px;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-muted);
@@ -253,7 +285,7 @@ main.content {
   width: 100%;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 36px 28px 72px;
+  padding: 14px 28px 72px;
   animation: fadeIn 0.25s var(--ease-out);
   position: relative;
   z-index: 1;
@@ -320,10 +352,47 @@ main.content {
 }
 
 .auth-card {
+  position: relative;
+  overflow: hidden;
   width: min(100%, 390px);
   padding: 24px 22px 18px;
   border-color: var(--rule);
   box-shadow: var(--shadow-md);
+}
+
+/* Registering --shine-angle as an <angle> lets it animate smoothly through
+   @keyframes -- a plain custom property can't interpolate on its own. */
+@property --shine-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.shine-border {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: var(--shine-border-width, 1.5px);
+  background: conic-gradient(
+    from var(--shine-angle, 0deg),
+    transparent 0%,
+    var(--brass-soft) 10%,
+    var(--brass) 18%,
+    var(--brass-soft) 26%,
+    transparent 38%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: shine-rotate var(--shine-duration, 12s) linear infinite;
+}
+
+@keyframes shine-rotate {
+  to { --shine-angle: 360deg; }
 }
 
 .auth-brand {
@@ -422,20 +491,83 @@ main.content {
 /* ---------------------------------------------------------------------
    Start Here (onboarding)
 ------------------------------------------------------------------------ */
-.start-here-explainer {
+.bento-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: minmax(120px, auto);
+  gap: 14px;
 }
-.start-here-explainer b {
-  font-size: 13px;
+@media (max-width: 720px) {
+  .bento-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.bento-card {
+  position: relative;
+  overflow: hidden;
+  grid-column: span 2;
+  background: #fff;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+  transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.bento-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--brass-soft);
+  transform: translateY(-1px);
+}
+.bento-card-wide { grid-column: span 4; }
+@media (max-width: 720px) {
+  .bento-card, .bento-card-wide { grid-column: span 2; }
+}
+.bento-card-tall { grid-row: span 2; }
+
+/* A large, faint watermark of the card's own icon in the back corner --
+   the bento pattern's signature move: content up front, a quiet echo of
+   it behind, rather than a flat list of icon+text rows. */
+.bento-card-glyph {
+  position: absolute;
+  right: -14px;
+  bottom: -16px;
+  color: var(--brass);
+  opacity: 0.07;
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+.bento-card-glyph svg { width: 92px; height: 92px; }
+
+.bento-card-body {
+  position: relative;
+  z-index: 1;
+}
+
+.bento-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--brass-bg);
+  color: var(--brass-dark);
+  margin-bottom: 10px;
+}
+.bento-card-icon svg { width: 18px; height: 18px; }
+
+.bento-card-name {
+  font-family: var(--font-display);
+  font-size: 15.5px;
   color: var(--ink);
+  margin: 0 0 4px;
 }
-.start-here-explainer p {
+
+.bento-card-desc {
   font-size: 12.5px;
   color: var(--text-muted);
-  margin: 3px 0 0;
-  line-height: 1.5;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 42ch;
 }
 
 .start-here-recs {
@@ -538,11 +670,11 @@ main.content {
 }
 
 .btn-ghost {
-  background: transparent;
-  border: 1px solid var(--rule);
-  color: var(--text);
+  background: var(--ink-glass);
+  border: 1px solid var(--ink-glass-border);
+  color: var(--ink);
 }
-.btn-ghost:hover:not(:disabled) { background: var(--paper-dim); border-color: var(--rule); }
+.btn-ghost:hover:not(:disabled) { background: var(--ink-glass-hover); }
 
 .btn-danger-ghost {
   background: transparent;
@@ -658,7 +790,7 @@ main.content {
   font-family: var(--font-ui);
   font-size: 12.5px;
   padding: 8px 11px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--ink-glass-border);
   border-radius: var(--radius-sm);
   background: #fff;
   width: 180px;
@@ -988,15 +1120,22 @@ input[type="range"] {
 /* ---------------------------------------------------------------------
    Library view toggle + lineage graph
 ------------------------------------------------------------------------ */
+/* Pill container + chips, deliberately mirroring the Dock's own
+   translucent-ink-idle / solid-ink-active language so an in-page toggle
+   reads as the same control family as the nav, not a different widget. */
 .view-toggle {
-  display: flex;
-  gap: 4px;
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
   margin-bottom: 18px;
+  background: var(--ink-glass);
+  border: 1px solid var(--ink-glass-border);
+  border-radius: calc(var(--radius-sm) + 3px);
 }
 
 .view-toggle-btn {
   background: transparent;
-  border: 1px solid var(--rule);
+  border: 1px solid transparent;
   color: var(--text-muted);
   font-family: var(--font-ui);
   font-size: 12.5px;
@@ -1007,7 +1146,7 @@ input[type="range"] {
   transition: background 0.15s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease);
 }
 
-.view-toggle-btn:hover { background: var(--paper-dim); }
+.view-toggle-btn:hover { background: var(--ink-glass-hover); }
 
 .view-toggle-btn.active {
   background: var(--ink);

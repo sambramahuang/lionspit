@@ -72,22 +72,53 @@ export default function MattersView({ isPartner }) {
     }
   };
 
-  if (loading) return <p className="spinner-text">Loading matters...</p>;
-  if (error) return <div className="error-banner">{error}</div>;
+  const header = (
+    <div className="page-header">
+      <h1 className="page-title">Matters</h1>
+      <p className="page-subtitle">
+        Every matter the corpus has enough signal to cluster, with its ethical-wall status.
+        Partners can wall a matter here and name exactly who's still allowed to see it — everyone
+        else sees status only.
+      </p>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <>
+        {header}
+        <p className="spinner-text">Loading matters...</p>
+      </>
+    );
+  }
+  if (error) {
+    return (
+      <>
+        {header}
+        <div className="error-banner">{error}</div>
+      </>
+    );
+  }
   if (matters.length === 0) {
     return (
-      <div className="empty-state">
-        No matters yet — a matter forms once two or more documents share the same named parties and matter type.
-      </div>
+      <>
+        {header}
+        <div className="empty-state">
+          No matters yet — a matter forms once two or more documents share the same named parties and matter type.
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="card">
-      <div className="section-label">
-        Matters <span className="count">{matters.length}</span>
-      </div>
-      <div style={{ overflowX: "auto" }}>
+    <>
+      {header}
+
+      <div className="card">
+        <div className="section-label">
+          Matters <span className="count">{matters.length}</span>
+        </div>
+        <div style={{ overflowX: "auto" }}>
         <table className="doc-table">
           <thead>
             <tr>
@@ -140,7 +171,8 @@ export default function MattersView({ isPartner }) {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
