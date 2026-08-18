@@ -22,10 +22,10 @@ legal-precedent-bank/
 The app uses a Supabase project for both the document store (Postgres +
 pgvector) and login (Supabase Auth). From the Supabase dashboard:
 
-1. **Run `backend/sql/matter_walls.sql` and `backend/sql/document_clauses.sql`**
-   in the SQL Editor. (The `documents` table is expected to already exist
-   — see `backend/app/vectorstore.py` for its shape if you're setting up
-   a fresh project.)
+1. **Run `backend/sql/matter_walls.sql`, `backend/sql/document_clauses.sql`,
+   and `backend/sql/matter_conflicts.sql`** in the SQL Editor. (The
+   `documents` table is expected to already exist — see `backend/app/
+   vectorstore.py` for its shape if you're setting up a fresh project.)
 2. **Authentication → Providers → Email**: turn off "Confirm email" so
    self-serve signup logs a user straight in — no email sending to set up
    for a hackathon demo.
@@ -146,6 +146,17 @@ whatever email you put in `PARTNER_EMAILS` to get partner access (the
    an invented clause.
 9. Adjust a ranking weight slider (e.g. push "partner approval" up) and
    re-run the search to show a lawyer can tune what "best" means, live.
+10. **Automatic conflict detection** — ingest a document whose
+    `counterparty_name` matches an existing client (or vice versa) — e.g.
+    a plain-text file naming "Alpha Robotics" as the counterparty to a new
+    client. The ingest result flags it immediately with a plain-English
+    reason, and it shows up on the **Matters tab** as a highlighted row a
+    partner can acknowledge. Nothing gets walled automatically — a
+    partner still makes the call.
+11. **Delete a document** (partner account) — in the Library tab, delete
+    a single mis-ingested document instead of wiping the whole index.
+    Sign in as a non-partner and confirm the Delete button isn't there at
+    all.
 
 ## How it works
 
@@ -209,6 +220,24 @@ whatever email you put in `PARTNER_EMAILS` to get partner access (the
   most-used precedents — all computed client-side from the same
   wall-filtered `/api/documents` response every other view uses, so it
   never shows anyone a document they're not allowed to see.
+- **Automatic conflict detection** (`backend/app/conflicts.py`): at ingest
+  time, the new document's `client_name`/`counterparty_name` are checked
+  against every *other* matter's for the classic positional-conflict
+  pattern — the new matter's party appears on the opposite side of an
+  existing, unrelated matter, meaning the firm may now be adverse to an
+  existing client (or representing someone it was previously adverse to).
+  Deliberately scans across ethical walls (a wall hiding a matter from one
+  lawyer must not also hide it from the conflict check, or the two
+  features would defeat each other) and deliberately never auto-applies a
+  wall — a flag surfaces on the Matters page (`matter_conflict_flags`
+  table) for a partner to review and acknowledge. First-pass name matching
+  only, same limitation as matter clustering: "Alpha Robotics Pte Ltd" and
+  "Alpha Robotics" won't be recognized as the same company.
+- **Document deletion** (`DELETE /api/documents/{doc_id}`): removing a
+  single wrongly-ingested or genuinely obsolete document used to mean
+  wiping the entire index — this is the actual fix. Partner-gated like
+  wall edits (it mutates a corpus every lawyer relies on), and wall
+  -checked the same way every document-returning route is.
 
 ## Deployment (Vercel)
 
@@ -242,14 +271,17 @@ are easy to miss and will produce a blank page or 401s if skipped:
 
 - **More corpus**: drop more files into `backend/demo_corpus/` and re-run
   the seed script — the brief calls for 20–50 documents in the live demo.
-- **Real conflict detection**: matter walls today are set by a partner by
-  hand. A first pass at automatic conflict flagging is a name match across
-  `client_name` / `counterparty_name` against existing matters at ingest
-  time, surfaced to a partner as a suggestion rather than auto-applied.
+- **Conflict detection beyond exact-name matching**: today's check
+  (`backend/app/conflicts.py`) is case-insensitive exact matching only —
+  fuzzy/alias matching (e.g. "Alpha Robotics" vs "Alpha Robotics Pte Ltd")
+  would catch more real conflicts.
 - **Partner roles beyond an env var**: `PARTNER_EMAILS` in `backend/app/
   config.py` is a static allowlist — fine for a demo, but a real version
   would be a role stored per-user (e.g. in Supabase) with an admin screen
   to grant/revoke it.
+- **Metadata editing**: a wrong auto-tag (bad date, missed version) has no
+  fix today short of deleting and re-ingesting — there's no metadata-edit
+  UI, only the new per-document delete.
 
 ## Notes
 

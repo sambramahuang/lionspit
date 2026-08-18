@@ -9,7 +9,7 @@ run. From backend/, with your virtualenv active and .env filled in:
 import sys
 from pathlib import Path
 
-from app import ingestion, vectorstore
+from app import conflicts, ingestion, matters, vectorstore
 
 CORPUS_DIR = Path(__file__).resolve().parent / "demo_corpus"
 
@@ -40,9 +40,16 @@ def main():
         vectorstore.add_document(doc_id, text, meta_dict)
         clauses = ingestion.split_into_clauses(text)
         vectorstore.add_document_clauses(doc_id, clauses)
+
+        new_matter_key = matters.cluster_key(meta_dict)
+        found_conflicts = conflicts.detect_conflicts(meta_dict, new_matter_key)
+        for c in found_conflicts:
+            vectorstore.flag_conflict(new_matter_key, c["reason"], doc_id)
+
+        conflict_note = f", CONFLICT FLAGGED: {found_conflicts[0]['reason'][:60]}..." if found_conflicts else ""
         print(f"  + {path.name:45s} -> {doc_id}  "
               f"[{metadata.document_type or '?'}, {metadata.document_date or '?'}, "
-              f"partner_approved={metadata.partner_approved}, {len(clauses)} clauses]")
+              f"partner_approved={metadata.partner_approved}, {len(clauses)} clauses]{conflict_note}")
 
     print("Done. Start the API with: uvicorn app.main:app --reload --port 8000")
 

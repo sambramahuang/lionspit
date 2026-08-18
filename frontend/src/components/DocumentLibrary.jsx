@@ -11,12 +11,13 @@ const FACET_FIELDS = [
 
 const EMPTY_FACETS = { practice_area: "", jurisdiction: "", matter_type: "", document_type: "", client_type: "" };
 
-export default function DocumentLibrary({ refreshKey, onReset, onPreview }) {
+export default function DocumentLibrary({ refreshKey, onChanged, onPreview, isPartner }) {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [q, setQ] = useState("");
   const [facets, setFacets] = useState(EMPTY_FACETS);
+  const [deletingId, setDeletingId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -38,7 +39,21 @@ export default function DocumentLibrary({ refreshKey, onReset, onPreview }) {
   const handleReset = async () => {
     if (!confirm("Clear the entire index? This removes every ingested document.")) return;
     await api.resetDocuments();
-    onReset?.();
+    onChanged?.();
+  };
+
+  const handleDelete = async (doc) => {
+    if (!confirm(`Delete "${doc.filename}"? This can't be undone -- the document and its clauses are removed permanently.`)) return;
+    setDeletingId(doc.doc_id);
+    setError(null);
+    try {
+      await api.deleteDocument(doc.doc_id);
+      onChanged?.();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   // Option lists are derived from whatever's actually in the corpus right
@@ -188,13 +203,25 @@ export default function DocumentLibrary({ refreshKey, onReset, onPreview }) {
                   </td>
                   <td className="mono">{d.usage_count}×</td>
                   <td>
-                    <button
-                      type="button"
-                      className="btn btn-ghost preview-btn"
-                      onClick={() => onPreview?.(d.doc_id)}
-                    >
-                      Preview
-                    </button>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        type="button"
+                        className="btn btn-ghost preview-btn"
+                        onClick={() => onPreview?.(d.doc_id)}
+                      >
+                        Preview
+                      </button>
+                      {isPartner && (
+                        <button
+                          type="button"
+                          className="btn btn-danger-ghost preview-btn"
+                          disabled={deletingId === d.doc_id}
+                          onClick={() => handleDelete(d)}
+                        >
+                          {deletingId === d.doc_id ? "Deleting…" : "Delete"}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -10,7 +10,7 @@ is_blocked()/is_key_blocked() here instead of re-implementing the check.
 from collections import defaultdict
 
 from app import vectorstore
-from app.models import MatterSummary, MatterWallInfo
+from app.models import ConflictFlag, MatterSummary, MatterWallInfo
 
 
 def cluster_key(meta: dict) -> str:
@@ -74,9 +74,12 @@ def summarize(user_email: str, is_partner: bool) -> list[MatterSummary]:
     UI. Partners see every matter (including ones they're personally
     walled from) so they can audit/manage wall config; non-partners only
     see matters they're not blocked from, so a walled matter's existence
-    and label aren't leaked to someone outside its allow-list."""
+    and label aren't leaked to someone outside its allow-list. Same
+    visibility rule extends to conflict flags -- they're matter-level
+    facts, shown wherever the matter itself is shown."""
     records = vectorstore.list_all()
     walls = load_walls()
+    conflicts = vectorstore.list_conflicts()
 
     grouped: dict = defaultdict(list)
     for r in records:
@@ -89,6 +92,7 @@ def summarize(user_email: str, is_partner: bool) -> list[MatterSummary]:
             continue
 
         wall = walls.get(key)
+        conflict = conflicts.get(key)
         first = group[0]["metadata"]
         client = first.get("client_name") or "Unnamed client"
         matter_type = first.get("matter_type") or "Matter"
@@ -106,7 +110,10 @@ def summarize(user_email: str, is_partner: bool) -> list[MatterSummary]:
                 updated_by=wall["updated_by"] if wall else None,
                 updated_at=wall["updated_at"] if wall else None,
             ),
+            conflict=ConflictFlag(**conflict) if conflict else None,
         ))
 
-    out.sort(key=lambda m: m.label.lower())
+    # Unresolved conflicts surface first -- that's the whole point of
+    # detecting them automatically, they shouldn't get buried alphabetically.
+    out.sort(key=lambda m: (not (m.conflict and not m.conflict.acknowledged), m.label.lower()))
     return out

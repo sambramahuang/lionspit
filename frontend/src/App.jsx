@@ -235,7 +235,12 @@ export default function App() {
             </div>
 
             {libraryView === "list" && (
-              <DocumentLibrary refreshKey={refreshKey} onReset={bumpRefresh} onPreview={preview.openPreview} />
+              <DocumentLibrary
+                refreshKey={refreshKey}
+                onChanged={bumpRefresh}
+                onPreview={preview.openPreview}
+                isPartner={!!me?.is_partner}
+              />
             )}
             {libraryView === "lineage" && (
               <LineageGraph refreshKey={refreshKey} onPreview={preview.openPreview} />

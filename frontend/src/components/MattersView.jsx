@@ -45,6 +45,7 @@ export default function MattersView({ isPartner }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(null);
+  const [acking, setAcking] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -72,13 +73,27 @@ export default function MattersView({ isPartner }) {
     }
   };
 
+  const acknowledge = async (matterKey) => {
+    setAcking(matterKey);
+    setError(null);
+    try {
+      const updated = await api.acknowledgeConflict(matterKey);
+      setMatters((prev) => prev.map((m) => (m.matter_key === matterKey ? { ...m, conflict: updated } : m)));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setAcking(null);
+    }
+  };
+
   const header = (
     <div className="page-header">
       <h1 className="page-title">Matters</h1>
       <p className="page-subtitle">
-        Every matter the corpus has enough signal to cluster, with its ethical-wall status.
-        Partners can wall a matter here and name exactly who's still allowed to see it — everyone
-        else sees status only.
+        Every matter the corpus has enough signal to cluster, with its ethical-wall status and any
+        automatically detected conflict of interest. Partners can wall a matter or acknowledge a
+        conflict flag here — everyone else sees status only. Conflicts are never applied
+        automatically; a partner always makes the call.
       </p>
     </div>
   );
@@ -126,49 +141,78 @@ export default function MattersView({ isPartner }) {
               <th>Docs</th>
               <th>Wall</th>
               <th>Allowed viewers</th>
+              <th>Conflict</th>
               {isPartner && <th></th>}
             </tr>
           </thead>
           <tbody>
-            {matters.map((m) => (
-              <tr key={m.matter_key}>
-                <td>{m.label}</td>
-                <td className="mono">{m.document_count}</td>
-                <td>
-                  {isPartner ? (
-                    <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <input
-                        type="checkbox"
-                        checked={m.wall.walled}
-                        onChange={(e) => patch(m.matter_key, (w) => ({ ...w, walled: e.target.checked }))}
-                      />
-                      walled
-                    </label>
-                  ) : m.wall.walled ? (
-                    <span className="badge badge-restricted">walled</span>
-                  ) : (
-                    <span className="mono" style={{ color: "var(--text-muted)" }}>open</span>
-                  )}
-                </td>
-                <td>
-                  {isPartner ? (
-                    <EmailListEditor
-                      emails={m.wall.allowed_emails}
-                      onChange={(emails) => patch(m.matter_key, (w) => ({ ...w, allowed_emails: emails }))}
-                    />
-                  ) : (
-                    m.wall.allowed_emails.join(", ") || "—"
-                  )}
-                </td>
-                {isPartner && (
+            {matters.map((m) => {
+              const unresolvedConflict = m.conflict && !m.conflict.acknowledged;
+              return (
+                <tr key={m.matter_key} className={unresolvedConflict ? "matter-row-conflict" : ""}>
+                  <td>{m.label}</td>
+                  <td className="mono">{m.document_count}</td>
                   <td>
-                    <button className="btn btn-ghost" disabled={saving === m.matter_key} onClick={() => save(m)}>
-                      {saving === m.matter_key ? "Saving..." : "Save"}
-                    </button>
+                    {isPartner ? (
+                      <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <input
+                          type="checkbox"
+                          checked={m.wall.walled}
+                          onChange={(e) => patch(m.matter_key, (w) => ({ ...w, walled: e.target.checked }))}
+                        />
+                        walled
+                      </label>
+                    ) : m.wall.walled ? (
+                      <span className="badge badge-restricted">walled</span>
+                    ) : (
+                      <span className="mono" style={{ color: "var(--text-muted)" }}>open</span>
+                    )}
                   </td>
-                )}
-              </tr>
-            ))}
+                  <td>
+                    {isPartner ? (
+                      <EmailListEditor
+                        emails={m.wall.allowed_emails}
+                        onChange={(emails) => patch(m.matter_key, (w) => ({ ...w, allowed_emails: emails }))}
+                      />
+                    ) : (
+                      m.wall.allowed_emails.join(", ") || "—"
+                    )}
+                  </td>
+                  <td style={{ maxWidth: 260 }}>
+                    {!m.conflict ? (
+                      <span className="mono" style={{ color: "var(--text-muted)" }}>—</span>
+                    ) : unresolvedConflict ? (
+                      <div>
+                        <span className="badge badge-conflict">possible conflict</span>
+                        <p className="reason-text" style={{ marginTop: 5 }}>{m.conflict.reason}</p>
+                        {isPartner && (
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            style={{ marginTop: 6 }}
+                            disabled={acking === m.matter_key}
+                            onClick={() => acknowledge(m.matter_key)}
+                          >
+                            {acking === m.matter_key ? "Saving..." : "Acknowledge"}
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="badge badge-unapproved">
+                        reviewed{m.conflict.acknowledged_by ? ` by ${m.conflict.acknowledged_by}` : ""}
+                      </span>
+                    )}
+                  </td>
+                  {isPartner && (
+                    <td>
+                      <button className="btn btn-ghost" disabled={saving === m.matter_key} onClick={() => save(m)}>
+                        {saving === m.matter_key ? "Saving..." : "Save"}
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         </div>

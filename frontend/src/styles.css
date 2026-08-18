@@ -735,6 +735,15 @@ main.content {
 .badge-approved { background: var(--flag-green-bg); color: var(--flag-green); border-color: rgba(63, 110, 82, 0.18); }
 .badge-unapproved { background: var(--paper-dim); color: var(--text-muted); border-color: var(--rule-soft); }
 .badge-restricted { background: var(--flag-lock-bg); color: var(--flag-lock); border-color: rgba(99, 80, 135, 0.18); }
+.badge-conflict { background: var(--flag-red-bg); color: var(--flag-red); border-color: rgba(168, 69, 58, 0.18); }
+
+/* Unresolved conflict flags get a subtle whole-row tint on the Matters
+   table -- automatic detection is only useful if it's hard to miss.
+   The :hover variant targets td directly (matching .doc-table tr:hover
+   td's own specificity) so the existing hover rule doesn't paint over
+   the tint with the default row-hover grey. */
+.matter-row-conflict { background: var(--flag-red-bg); }
+.doc-table tr.matter-row-conflict:hover td { background: var(--flag-red-bg); }
 
 /* ---------------------------------------------------------------------
    Search panel

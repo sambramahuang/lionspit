@@ -41,6 +41,8 @@ export const api = {
 
   resetDocuments: () => request("/api/documents", { method: "DELETE" }),
 
+  deleteDocument: (docId) => request(`/api/documents/${encodeURIComponent(docId)}`, { method: "DELETE" }),
+
   lineage: () => request("/api/lineage"),
 
   listMatters: () => request("/api/matters"),
@@ -50,6 +52,9 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  acknowledgeConflict: (matterKey) =>
+    request(`/api/matters/${encodeURIComponent(matterKey)}/conflict/acknowledge`, { method: "POST" }),
 
   ingest: (files) => {
     const form = new FormData();

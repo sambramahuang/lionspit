@@ -5,13 +5,14 @@ FastAPI entrypoint. Run with:  uvicorn app.main:app --reload --port 8000
 from fastapi import Depends, FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import ingestion, matters, search as search_module, vectorstore
+from app import conflicts as conflicts_module, ingestion, matters, search as search_module, vectorstore
 from app.auth import CurrentUser, get_current_user, require_partner
 from app.config import settings
 from app.drafting import generate_draft
 from app.models import (
     ClauseSearchRequest,
     ClauseSearchResponse,
+    ConflictFlag,
     DocumentRecord,
     DraftRequest,
     DraftResponse,
@@ -69,7 +70,16 @@ async def ingest_documents(files: list[UploadFile] = File(...), _user: CurrentUs
 
             vectorstore.add_document(doc_id, text, meta_dict)
             vectorstore.add_document_clauses(doc_id, ingestion.split_into_clauses(text))
-            results.append(IngestResult(doc_id=doc_id, filename=f.filename, metadata=metadata, status="ingested"))
+
+            new_matter_key = matters.cluster_key(meta_dict)
+            found_conflicts = conflicts_module.detect_conflicts(meta_dict, new_matter_key)
+            for c in found_conflicts:
+                vectorstore.flag_conflict(new_matter_key, c["reason"], doc_id)
+
+            results.append(IngestResult(
+                doc_id=doc_id, filename=f.filename, metadata=metadata, status="ingested",
+                conflict_warnings=[c["reason"] for c in found_conflicts],
+            ))
         except Exception as e:  # noqa: BLE001 -- surface per-file errors, don't kill the batch
             results.append(IngestResult(
                 doc_id="", filename=f.filename, metadata=ingestion.DocumentMetadata(), status="error", error=str(e)
@@ -119,6 +129,23 @@ def reset_documents(_user: CurrentUser = Depends(get_current_user)):
     return {"status": "reset"}
 
 
+@app.delete("/api/documents/{doc_id}")
+def delete_document(doc_id: str, user: CurrentUser = Depends(require_partner)):
+    """Removing a single wrongly-ingested or genuinely obsolete document
+    used to mean wiping the entire index -- this is the actual fix.
+    Partner-gated like wall edits, since it mutates a corpus every lawyer
+    relies on, not just the deleter's own data. Wall-checked the same way
+    every other document-returning route is: a partner personally walled
+    off a matter still can't act on documents inside it."""
+    record = vectorstore.get_by_id(doc_id)
+    if record is None:
+        raise HTTPException(404, "document not found")
+    if matters.is_blocked(record["metadata"], user.email, matters.load_walls()):
+        raise HTTPException(403, "This matter is walled off. You don't have access to view it.")
+    vectorstore.delete_document(doc_id)
+    return {"status": "deleted", "doc_id": doc_id}
+
+
 @app.get("/api/lineage", response_model=LineageResponse)
 def lineage(user: CurrentUser = Depends(get_current_user)):
     """Corpus-wide version-history graph: one cluster per matter, current
@@ -135,6 +162,18 @@ def list_matters(user: CurrentUser = Depends(get_current_user)):
 def set_matter_wall(matter_key: str, req: MatterWallRequest, user: CurrentUser = Depends(require_partner)):
     allowed = sorted({e.strip().lower() for e in req.allowed_emails if e.strip()})
     return vectorstore.set_wall(matter_key, req.walled, allowed, user.email)
+
+
+@app.post("/api/matters/{matter_key}/conflict/acknowledge", response_model=ConflictFlag)
+def acknowledge_conflict(matter_key: str, user: CurrentUser = Depends(require_partner)):
+    """Marks a conflict flag reviewed -- doesn't delete the record, just
+    stops it surfacing as unresolved. A fresh detection later (see
+    vectorstore.flag_conflict) resets it, so acknowledging today doesn't
+    silence a genuinely new signal tomorrow."""
+    result = vectorstore.acknowledge_conflict(matter_key, user.email)
+    if result is None:
+        raise HTTPException(404, "no conflict flag for this matter")
+    return result
 
 
 @app.post("/api/search", response_model=SearchResponse)

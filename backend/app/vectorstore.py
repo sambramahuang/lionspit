@@ -132,6 +132,15 @@ def reset():
         # same TRUNCATE statement (or CASCADE used) or Postgres refuses.
         conn.execute("TRUNCATE TABLE document_clauses, documents")
         conn.execute("TRUNCATE TABLE matter_walls")
+        conn.execute("TRUNCATE TABLE matter_conflict_flags")
+
+
+def delete_document(doc_id: str):
+    """Removes a single document (and its clauses, via ON DELETE CASCADE
+    on document_clauses) without touching anything else in the index --
+    the only way to correct a bad ingest short of a full reset()."""
+    with _connect() as conn:
+        conn.execute("DELETE FROM documents WHERE doc_id = %s", (doc_id,))
 
 
 def add_document_clauses(doc_id: str, clauses: list[dict]):
@@ -231,4 +240,61 @@ def _wall_row_to_dict(row) -> dict:
         "allowed_emails": row[2] or [],
         "updated_by": row[3],
         "updated_at": row[4].isoformat() if row[4] else None,
+    }
+
+
+def flag_conflict(matter_key: str, reason: str, flagged_doc_id: str):
+    """Upserts a conflict flag for a matter -- re-detecting a conflict for
+    an already-flagged matter refreshes the reason and resets it to
+    unacknowledged, since a fresh signal deserves a fresh look even if a
+    prior one was dismissed."""
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO matter_conflict_flags (matter_key, reason, flagged_doc_id, detected_at, acknowledged)
+            VALUES (%s, %s, %s, now(), false)
+            ON CONFLICT (matter_key) DO UPDATE
+            SET reason = EXCLUDED.reason,
+                flagged_doc_id = EXCLUDED.flagged_doc_id,
+                detected_at = now(),
+                acknowledged = false,
+                acknowledged_by = NULL,
+                acknowledged_at = NULL
+            """,
+            (matter_key, reason, flagged_doc_id),
+        )
+
+
+def list_conflicts() -> dict:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT matter_key, reason, flagged_doc_id, detected_at, acknowledged, acknowledged_by, acknowledged_at "
+            "FROM matter_conflict_flags"
+        ).fetchall()
+    return {row[0]: _conflict_row_to_dict(row) for row in rows}
+
+
+def acknowledge_conflict(matter_key: str, acknowledged_by: str):
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            UPDATE matter_conflict_flags
+            SET acknowledged = true, acknowledged_by = %s, acknowledged_at = now()
+            WHERE matter_key = %s
+            RETURNING matter_key, reason, flagged_doc_id, detected_at, acknowledged, acknowledged_by, acknowledged_at
+            """,
+            (acknowledged_by, matter_key),
+        ).fetchone()
+    return _conflict_row_to_dict(row) if row else None
+
+
+def _conflict_row_to_dict(row) -> dict:
+    return {
+        "matter_key": row[0],
+        "reason": row[1],
+        "flagged_doc_id": row[2],
+        "detected_at": row[3].isoformat() if row[3] else None,
+        "acknowledged": row[4],
+        "acknowledged_by": row[5],
+        "acknowledged_at": row[6].isoformat() if row[6] else None,
     }

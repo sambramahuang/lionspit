@@ -97,20 +97,33 @@ export default function UploadPanel({ onIngested }) {
             </thead>
             <tbody>
               {results.map((r, i) => (
-                <tr key={i}>
+                <tr key={i} className={r.conflict_warnings?.length > 0 ? "matter-row-conflict" : ""}>
                   <td className="doc-filename">{r.filename}</td>
                   <td>
-                    {r.status === "ingested" ? (
-                      <span className="badge badge-approved">indexed</span>
-                    ) : (
+                    {r.status !== "ingested" ? (
                       <span className="badge" style={{ background: "var(--flag-red-bg)", color: "var(--flag-red)" }}>
                         error
                       </span>
+                    ) : r.conflict_warnings?.length > 0 ? (
+                      <span className="badge badge-conflict">conflict flagged</span>
+                    ) : (
+                      <span className="badge badge-approved">indexed</span>
                     )}
                   </td>
                   <td className="mono">{r.metadata?.document_type || "—"}</td>
                   <td style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-                    {r.status === "ingested" ? r.metadata?.short_description : r.error}
+                    {r.status !== "ingested" ? (
+                      r.error
+                    ) : r.conflict_warnings?.length > 0 ? (
+                      <>
+                        {r.metadata?.short_description}
+                        <p className="reason-text" style={{ marginTop: 4 }}>
+                          {r.conflict_warnings[0]} See the Matters tab to review.
+                        </p>
+                      </>
+                    ) : (
+                      r.metadata?.short_description
+                    )}
                   </td>
                 </tr>
               ))}

@@ -50,6 +50,7 @@ class IngestResult(BaseModel):
     metadata: DocumentMetadata
     status: str  # "ingested" | "error"
     error: Optional[str] = None
+    conflict_warnings: list[str] = Field(default_factory=list)
 
 
 class RankingWeights(BaseModel):
@@ -167,11 +168,22 @@ class MatterWallRequest(BaseModel):
     allowed_emails: list[str] = Field(default_factory=list)
 
 
+class ConflictFlag(BaseModel):
+    matter_key: str
+    reason: str
+    flagged_doc_id: Optional[str] = None
+    detected_at: Optional[str] = None
+    acknowledged: bool = False
+    acknowledged_by: Optional[str] = None
+    acknowledged_at: Optional[str] = None
+
+
 class MatterSummary(BaseModel):
     matter_key: str
     label: str
     document_count: int
     wall: MatterWallInfo
+    conflict: Optional[ConflictFlag] = None
 
 
 class DraftRequest(BaseModel):
