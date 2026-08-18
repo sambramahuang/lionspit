@@ -26,9 +26,9 @@ pgvector) and login (Supabase Auth). From the Supabase dashboard:
 2. **Authentication → Providers → Email**: turn off "Confirm email" so
    self-serve signup logs a user straight in — no email sending to set up
    for a hackathon demo.
-3. Note down, from **Project Settings → API**: the Project URL, the
-   anon/publishable key, and (under JWT Settings) the JWT Secret. You'll
-   need these below.
+3. Note down, from **Project Settings → API**: the Project URL and the
+   anon/publishable key. You'll need these below (there's no need to touch
+   JWT Settings at all — see the Login bullet under "How it works").
 
 ## 2. Backend setup
 
@@ -45,8 +45,9 @@ Fill in `.env`:
 - `OPENAI_API_KEY` — your real key.
 - `DATABASE_URL` — Supabase Postgres connection string, "Transaction
   pooler" mode (Project Settings → Database).
-- `SUPABASE_JWT_SECRET` — the JWT Secret from step 1.3 above. Every route
-  except `/api/health` returns 401 without this set.
+- `SUPABASE_URL` / `SUPABASE_ANON_KEY` — from step 1.3 above (same values
+  the frontend uses). Every route except `/api/health` returns 401
+  without these set.
 - `PARTNER_EMAILS` — comma-separated emails allowed to set/edit matter
   walls (e.g. your own, for testing).
 
@@ -144,8 +145,12 @@ whatever email you put in `PARTNER_EMAILS` to get partner access (the
   ranked lower.
 - **Login** (`backend/app/auth.py`, `frontend/src/supabaseClient.js`):
   Supabase Auth (email/password). Every API route except `/api/health`
-  requires a verified session; the backend checks the JWT itself rather
-  than trusting anything the client claims.
+  requires a verified session. The backend verifies each request's bearer
+  token by asking Supabase's own Auth API (`GET /auth/v1/user`) whether
+  it's valid, rather than decoding the JWT locally -- Supabase signs
+  tokens with whichever algorithm a given project is configured for
+  (legacy shared HS256 secret vs. newer asymmetric ES256 signing keys),
+  so there's no one algorithm this backend can safely hardcode.
 - **Ethical walls** (`backend/app/matters.py`): access control is
   matter-level, not per-document and not per-role — matching how this
   actually works at a firm (default access is open; a wall is the
@@ -162,6 +167,34 @@ whatever email you put in `PARTNER_EMAILS` to get partner access (the
   every clause it draws on, and a `[[GAP: ...]]` marker instead of
   inventing anything the sources don't cover. The frontend renders `[[n]]`
   as clickable badges that jump back to the source.
+
+## Deployment (Vercel)
+
+`vercel.json` runs frontend and backend as two Vercel Services on one
+domain (`/api/*` routes to the backend, everything else to the frontend),
+so both share the same Supabase project as local dev. A few things that
+are easy to miss and will produce a blank page or 401s if skipped:
+
+- **The frontend needs its own `VITE_`-prefixed env vars in Vercel**,
+  separate from the backend's. Vite bakes `VITE_SUPABASE_URL` /
+  `VITE_SUPABASE_ANON_KEY` into the build at build time — the backend
+  already having `SUPABASE_URL`/`SUPABASE_ANON_KEY` set (e.g. via
+  Vercel's native Supabase integration) does **not** cover the frontend.
+  Missing `VITE_` vars crash the whole page to blank before React even
+  mounts (`supabaseClient.js` fails fast with a visible error card
+  instead, as of the fix in this repo — but the underlying env vars still
+  need to be set for login to actually work).
+- **Env var changes need a redeploy to take effect** — saving a new value
+  in the dashboard doesn't retroactively patch an already-built
+  deployment. Use Deployments → **⋯** → **Redeploy**.
+- **`PARTNER_EMAILS` isn't auto-provisioned** by the Supabase integration
+  (unlike `SUPABASE_URL`/`SUPABASE_ANON_KEY`) — add it manually in
+  Environment Variables or no one has partner access in production.
+- If you ever run the backend test suite (`pytest`) against the same
+  `DATABASE_URL` this deployment points at, know that it **resets and
+  reseeds the real documents table** (`test_matter_walls.py`'s `setUp`
+  calls `vectorstore.reset()`) — re-run `python seed_demo_data.py --reset`
+  afterward, or point tests at a separate Supabase project.
 
 ## Extending this in the time you have left
 
