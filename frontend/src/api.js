@@ -60,6 +60,9 @@ export const api = {
   search: (payload) =>
     request("/api/search", { method: "POST", body: JSON.stringify(payload) }),
 
+  searchClauses: (payload) =>
+    request("/api/search/clauses", { method: "POST", body: JSON.stringify(payload) }),
+
   draft: (payload) =>
     request("/api/draft", { method: "POST", body: JSON.stringify(payload) }),
 };

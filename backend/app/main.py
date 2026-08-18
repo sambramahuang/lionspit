@@ -10,6 +10,8 @@ from app.auth import CurrentUser, get_current_user, require_partner
 from app.config import settings
 from app.drafting import generate_draft
 from app.models import (
+    ClauseSearchRequest,
+    ClauseSearchResponse,
     DocumentRecord,
     DraftRequest,
     DraftResponse,
@@ -66,6 +68,7 @@ async def ingest_documents(files: list[UploadFile] = File(...), _user: CurrentUs
             meta_dict["usage_count"] = 0
 
             vectorstore.add_document(doc_id, text, meta_dict)
+            vectorstore.add_document_clauses(doc_id, ingestion.split_into_clauses(text))
             results.append(IngestResult(doc_id=doc_id, filename=f.filename, metadata=metadata, status="ingested"))
         except Exception as e:  # noqa: BLE001 -- surface per-file errors, don't kill the batch
             results.append(IngestResult(
@@ -139,6 +142,13 @@ def search(req: SearchRequest, user: CurrentUser = Depends(get_current_user)):
     if not req.query.strip():
         raise HTTPException(400, "query must not be empty")
     return search_module.run_search(req, user.email)
+
+
+@app.post("/api/search/clauses", response_model=ClauseSearchResponse)
+def search_clauses(req: ClauseSearchRequest, user: CurrentUser = Depends(get_current_user)):
+    if not req.query.strip():
+        raise HTTPException(400, "query must not be empty")
+    return search_module.run_clause_search(req, user.email)
 
 
 @app.post("/api/draft", response_model=DraftResponse)

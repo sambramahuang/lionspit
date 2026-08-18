@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { api } from "../api.js";
 import SearchPanel from "./SearchPanel.jsx";
 import ResultCard from "./ResultCard.jsx";
+import ClauseResultCard from "./ClauseResultCard.jsx";
 import DraftView from "./DraftView.jsx";
 
 const DEFAULT_WEIGHTS = {
@@ -13,6 +14,7 @@ const DEFAULT_WEIGHTS = {
 };
 
 export default function SearchPage({ onPreview }) {
+  const [mode, setMode] = useState("documents"); // "documents" | "clauses"
   const [query, setQuery] = useState("");
   const [jurisdictionFilter, setJurisdictionFilter] = useState("");
   const [matterTypeFilter, setMatterTypeFilter] = useState("");
@@ -21,25 +23,39 @@ export default function SearchPage({ onPreview }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [clauseResult, setClauseResult] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [showOther, setShowOther] = useState(false);
   const [highlighted, setHighlighted] = useState(null);
 
   const cardRefs = useRef({});
 
+  const switchMode = (next) => {
+    setMode(next);
+    setResult(null);
+    setClauseResult(null);
+    setError(null);
+  };
+
   const runSearch = async () => {
     if (!query.trim()) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await api.search({
-        query,
-        jurisdiction_filter: jurisdictionFilter || null,
-        matter_type_filter: matterTypeFilter || null,
-        weights,
-      });
-      setResult(res);
-      setSelectedIds(res.kept.map((k) => k.doc_id));
+      if (mode === "clauses") {
+        const res = await api.searchClauses({ query });
+        setClauseResult(res);
+        setSelectedIds([...new Set(res.kept.map((k) => k.doc_id))]);
+      } else {
+        const res = await api.search({
+          query,
+          jurisdiction_filter: jurisdictionFilter || null,
+          matter_type_filter: matterTypeFilter || null,
+          weights,
+        });
+        setResult(res);
+        setSelectedIds(res.kept.map((k) => k.doc_id));
+      }
     } catch (e) {
       setError(e.message);
     } finally {
@@ -83,12 +99,46 @@ export default function SearchPage({ onPreview }) {
         jurisdictionFilter={jurisdictionFilter} setJurisdictionFilter={setJurisdictionFilter}
         matterTypeFilter={matterTypeFilter} setMatterTypeFilter={setMatterTypeFilter}
         weights={weights} setWeights={setWeights}
+        mode={mode} setMode={switchMode}
         onSearch={runSearch} busy={busy}
       />
 
       {error && <div className="error-banner" style={{ marginTop: 16 }}>{error}</div>}
 
-      {result && (
+      {mode === "clauses" && clauseResult && (
+        <>
+          <div className="section-label">
+            Matching clauses <span className="count">{clauseResult.kept.length}</span>
+          </div>
+          <div className="result-grid">
+            {clauseResult.kept.map((item) => (
+              <ClauseResultCard
+                key={`${item.doc_id}-${item.clause_index}`}
+                item={item}
+                selectable
+                selected={selectedIds.includes(item.doc_id)}
+                onToggle={toggleSelect}
+                onPreview={previewAndHighlight}
+              />
+            ))}
+            {clauseResult.kept.length === 0 && (
+              <div className="empty-state">No clauses matched that closely enough. Try rephrasing, or switch to document search.</div>
+            )}
+          </div>
+
+          {clauseResult.access_restricted.length > 0 && (
+            <div className="section-label" style={{ marginTop: 10 }}>
+              <span className="restricted-text" style={{ marginTop: 0 }}>
+                {clauseResult.access_restricted.length} matching clause(s) hidden by an ethical wall
+              </span>
+            </div>
+          )}
+
+          <DraftView query={query} selectedDocIds={selectedIds} onCiteClick={jumpToSource} />
+        </>
+      )}
+
+      {mode === "documents" && result && (
         <>
           <div className="section-label">
             Selected as strongest precedents <span className="count">{result.kept.length}</span>

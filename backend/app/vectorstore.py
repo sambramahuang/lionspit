@@ -22,11 +22,19 @@ import psycopg
 from pgvector.psycopg import register_vector
 
 from app.config import settings
-from app.llm_client import embed_text
+from app.llm_client import embed_text, embed_texts
 
 
 def _connect():
-    conn = psycopg.connect(settings.require_database_url())
+    # prepare_threshold=None disables psycopg3's automatic server-side
+    # prepared statements. DATABASE_URL points at Supabase's transaction
+    # -mode pooler (pgbouncer/Supavisor), which can hand different client
+    # calls the same underlying backend connection -- a prepared
+    # statement name from one caller can collide with one already
+    # registered by another, surfacing as "prepared statement ... already
+    # exists". Simple (unprepared) queries avoid that entirely, which is
+    # the standard fix when psycopg3 sits behind a transaction pooler.
+    conn = psycopg.connect(settings.require_database_url(), prepare_threshold=None)
     register_vector(conn)
     return conn
 
@@ -120,8 +128,64 @@ def increment_usage(doc_id: str):
 
 def reset():
     with _connect() as conn:
-        conn.execute("TRUNCATE TABLE documents")
+        # document_clauses FKs into documents -- both must be named in the
+        # same TRUNCATE statement (or CASCADE used) or Postgres refuses.
+        conn.execute("TRUNCATE TABLE document_clauses, documents")
         conn.execute("TRUNCATE TABLE matter_walls")
+
+
+def add_document_clauses(doc_id: str, clauses: list[dict]):
+    """Stores one row per {"label", "text"} clause (see
+    ingestion.split_into_clauses) with its own embedding, replacing any
+    existing clauses for this doc_id -- so re-ingesting a doc_id (the
+    ON CONFLICT path in add_document) doesn't leave stale clause rows
+    behind alongside the fresh ones."""
+    if not clauses:
+        return
+    embeddings = embed_texts([c["text"] for c in clauses])
+    with _connect() as conn:
+        conn.execute("DELETE FROM document_clauses WHERE doc_id = %s", (doc_id,))
+        with conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO document_clauses (doc_id, clause_index, label, text, embedding)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                [
+                    (doc_id, i, c["label"], c["text"], emb)
+                    for i, (c, emb) in enumerate(zip(clauses, embeddings))
+                ],
+            )
+
+
+def query_clauses(query_text: str, n_results: int = 15):
+    """Same nested-list result shape as query(), plus clause_index/label,
+    so search.py's candidate-building code can treat clause and document
+    search the same way."""
+    embedding = embed_text(query_text)
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT dc.doc_id, dc.clause_index, dc.label, dc.text, d.metadata,
+                   dc.embedding <=> %s::vector AS distance
+            FROM document_clauses dc
+            JOIN documents d ON d.doc_id = dc.doc_id
+            ORDER BY distance
+            LIMIT %s
+            """,
+            (embedding, n_results),
+        ).fetchall()
+    return [
+        {
+            "doc_id": r[0],
+            "clause_index": r[1],
+            "label": r[2],
+            "text": r[3],
+            "meta": r[4],
+            "similarity": max(0.0, min(1.0, 1 - r[5])),
+        }
+        for r in rows
+    ]
 
 
 def get_wall(matter_key: str):

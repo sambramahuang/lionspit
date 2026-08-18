@@ -3,6 +3,7 @@ import { api } from "./api.js";
 import { supabase, supabaseConfigError } from "./supabaseClient.js";
 import Auth from "./components/Auth.jsx";
 import MattersView from "./components/MattersView.jsx";
+import StartHereView from "./components/StartHereView.jsx";
 import UploadPanel from "./components/UploadPanel.jsx";
 import DocumentLibrary from "./components/DocumentLibrary.jsx";
 import LineageGraph from "./components/LineageGraph.jsx";
@@ -23,6 +24,15 @@ const ICON_PROPS = {
   strokeLinecap: "round",
   strokeLinejoin: "round",
 };
+
+function StartHereIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <path d="M5 3v18" />
+      <path d="M5 4h11l-2.5 4L16 12H5" />
+    </svg>
+  );
+}
 
 function LibraryIcon() {
   return (
@@ -50,6 +60,7 @@ function MattersIcon() {
 }
 
 const TAB_ITEMS = [
+  { key: "start", label: "Start Here", icon: <StartHereIcon /> },
   { key: "library", label: "Library", icon: <LibraryIcon /> },
   { key: "search", label: "Search & Draft", icon: <SearchIcon /> },
   { key: "matters", label: "Matters", icon: <MattersIcon /> },
@@ -58,7 +69,7 @@ const TAB_ITEMS = [
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = checking, null = signed out
   const [me, setMe] = useState(null);
-  const [tab, setTab] = useState("library");
+  const [tab, setTab] = useState("start");
   const [libraryView, setLibraryView] = useState("list");
   const [refreshKey, setRefreshKey] = useState(0);
   const [apiUp, setApiUp] = useState(null);
@@ -172,6 +183,10 @@ export default function App() {
       </header>
 
       <main className="content">
+        {tab === "start" && (
+          <StartHereView onPreview={preview.openPreview} onGoToSearch={() => setTab("search")} />
+        )}
+
         {tab === "library" && (
           <>
             <div className="page-header">

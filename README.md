@@ -3,10 +3,12 @@
 A working scaffold for *"turn a firm's messy documents into a trusted,
 searchable precedent bank"* — built for The Lion's Pit 2026, Challenge 3.
 
-Ingest messy files as-is → auto-tag them (no manual sorting) → search in
-plain English or legal terms → see exactly why each result ranked, was
-rejected, or was blocked by an ethical wall → generate a draft with every
-clause footnoted back to its source.
+Ingest messy files as-is → auto-tag them (no manual sorting) → browse or
+search by practice area, or search for the exact clause you need instead
+of a whole document → see exactly why each result ranked, was rejected, or
+was blocked by an ethical wall → generate a draft with every clause
+footnoted back to its source. A dedicated Start Here view curates the
+firm's most-trusted precedents by practice area for anyone new to a team.
 
 ```
 legal-precedent-bank/
@@ -20,9 +22,10 @@ legal-precedent-bank/
 The app uses a Supabase project for both the document store (Postgres +
 pgvector) and login (Supabase Auth). From the Supabase dashboard:
 
-1. **Run `backend/sql/matter_walls.sql`** in the SQL Editor. (The
-   `documents` table is expected to already exist — see `backend/app/
-   vectorstore.py` for its shape if you're setting up a fresh project.)
+1. **Run `backend/sql/matter_walls.sql` and `backend/sql/document_clauses.sql`**
+   in the SQL Editor. (The `documents` table is expected to already exist
+   — see `backend/app/vectorstore.py` for its shape if you're setting up
+   a fresh project.)
 2. **Authentication → Providers → Email**: turn off "Confirm email" so
    self-serve signup logs a user straight in — no email sending to set up
    for a hackathon demo.
@@ -62,7 +65,9 @@ python seed_demo_data.py --reset
 ```
 
 This calls the LLM once per document to auto-tag it — that's the "low
--effort capture" step, not a canned fixture. Re-run any time you add more
+-effort capture" step, not a canned fixture — and also splits each
+document into individually-searchable clauses (no extra LLM call; see the
+clause search bullet under "How it works"). Re-run any time you add more
 files to `backend/demo_corpus/`.
 
 Start the API:
@@ -100,32 +105,46 @@ whatever email you put in `PARTNER_EMAILS` to get partner access (the
 
 1. **Sign up / log in** — a plain email/password screen; no anonymous
    access to anything in the app.
-2. **Library tab** — show the corpus is genuinely messy (open a couple of
+2. **Start Here tab** — lands here by default. Shows what the tool does in
+   a sentence each, the firm's most-relied-upon documents firm-wide, and
+   every practice area with its top (partner-approved, most-used)
+   precedents highlighted — this is the onboarding/continuity pillar made
+   concrete: a new joiner doesn't need to already know where to look.
+3. **Library tab** — show the corpus is genuinely messy (open a couple of
    the raw `.txt` files in `backend/demo_corpus/` first if you want the
    judges to see the "before"). Click **Ingest**, watch each file get read
-   and auto-tagged live, with no manual sorting.
-3. **Search & Draft tab** — run a query in plain English, e.g.
-   *"cap on a shareholder's liability if they breach the agreement"* —
-   this should surface the Alpha Robotics shareholders' agreements even
+   and auto-tagged live, with no manual sorting. Then use the practice
+   area / jurisdiction / matter type / document type filters (plus the
+   free-text box) to show browsing the corpus by facet, not just a flat
+   list.
+4. **Search & Draft tab, document mode** — run a query in plain English,
+   e.g. *"cap on a shareholder's liability if they breach the agreement"*
+   — this should surface the Alpha Robotics shareholders' agreements even
    though the query never says "indemnity" or "SHA".
-4. Point out the **rejected** section: the outdated v1/v2 drafts get
+5. Point out the **rejected** section: the outdated v1/v2 drafts get
    flagged with a plain-English reason (superseded, not partner-approved),
    not just silently dropped.
-5. **Matters tab** (partner account) — wall the Alpha Robotics matter,
+6. **Switch to clause mode** (toggle at the top of the search panel) and
+   run something narrower, e.g. *"cap on indemnity liability"* — instead
+   of ranking whole documents, this returns the exact clause, labeled and
+   quoted, with a similarity score and a link back to its source document.
+   This is the difference between "here's a 40-page agreement that's
+   probably relevant" and "here's the paragraph you need."
+7. **Matters tab** (partner account) — wall the Alpha Robotics matter,
    naming only a couple of allowed emails. Sign in as a different, unlisted
-   account in a private window and re-run the same search — the walled
-   matter's documents disappear from search/library/lineage entirely and
-   show up as "access restricted" instead. This is the ethical-wall /
-   access-control pillar made real: it's tied to a verified login, not a
-   toggle in the UI, and it's set per-matter by a partner, not inferred
-   from a document.
-6. Back on the partner account: select the top precedent(s), hit
+   account in a private window and re-run the same search (document or
+   clause mode — both respect the wall) — the walled matter's documents
+   disappear from search/library/lineage entirely and show up as "access
+   restricted" instead. This is the ethical-wall / access-control pillar
+   made real: it's tied to a verified login, not a toggle in the UI, and
+   it's set per-matter by a partner, not inferred from a document.
+8. Back on the partner account: select the top precedent(s), hit
    **Generate draft**, and click a citation badge in the draft — it
    scrolls to and highlights the exact source document above. This is the
    trust-building centerpiece: nothing in the draft is ungrounded, and
    anything the sources didn't cover shows up as a flagged gap instead of
    an invented clause.
-7. Adjust a ranking weight slider (e.g. push "partner approval" up) and
+9. Adjust a ranking weight slider (e.g. push "partner approval" up) and
    re-run the search to show a lawyer can tune what "best" means, live.
 
 ## How it works
@@ -167,6 +186,29 @@ whatever email you put in `PARTNER_EMAILS` to get partner access (the
   every clause it draws on, and a `[[GAP: ...]]` marker instead of
   inventing anything the sources don't cover. The frontend renders `[[n]]`
   as clickable badges that jump back to the source.
+- **Clause search** (`backend/app/ingestion.py:split_into_clauses`,
+  `vectorstore.query_clauses`, `search.run_clause_search`): at ingest time,
+  each document is split into individually-embedded "clauses" via a
+  regex pass tuned to how legal documents actually number provisions
+  ("1.", "Section 3:", "Clause 5.2", ...), falling back to paragraph
+  chunking for unstructured text (emails, memos) rather than forcing a
+  legal-clause shape onto something that doesn't have one. No LLM call
+  for the split itself, so ingestion cost doesn't scale with how many
+  clauses a document has. Toggle to "Search clauses" on the Search & Draft
+  tab to rank individual provisions instead of whole documents — walled
+  matters are blocked here exactly the same way as document search.
+- **Faceted library browsing** (`frontend/src/components/DocumentLibrary.jsx`):
+  filter the indexed corpus by practice area, jurisdiction, matter type,
+  document type, or client type, plus free-text search — option lists are
+  derived live from whatever's actually in the corpus, not a hardcoded
+  taxonomy.
+- **Start Here** (`frontend/src/components/StartHereView.jsx`): the
+  onboarding/continuity pillar as a dedicated view, not just an implicit
+  benefit of the precedent bank existing. Curates the firm's most-used
+  documents firm-wide and, per practice area, the top partner-approved /
+  most-used precedents — all computed client-side from the same
+  wall-filtered `/api/documents` response every other view uses, so it
+  never shows anyone a document they're not allowed to see.
 
 ## Deployment (Vercel)
 

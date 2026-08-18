@@ -95,6 +95,35 @@ class SearchResponse(BaseModel):
     access_restricted: list[RejectedItem]   # blocked by a matter-level ethical wall, not content
 
 
+class ClauseSearchRequest(BaseModel):
+    query: str
+    candidate_pool: int = 20
+    keep_top: int = 8
+
+
+class ClauseResult(BaseModel):
+    doc_id: str
+    filename: str
+    clause_index: int
+    label: Optional[str] = None
+    text: str
+    similarity: float
+    metadata: DocumentMetadata
+
+
+class ClauseAccessRestricted(BaseModel):
+    doc_id: str
+    filename: str
+    reason: str
+
+
+class ClauseSearchResponse(BaseModel):
+    query: str
+    candidates_considered: int
+    kept: list[ClauseResult]
+    access_restricted: list[ClauseAccessRestricted]
+
+
 class LineageNode(BaseModel):
     doc_id: str
     filename: str

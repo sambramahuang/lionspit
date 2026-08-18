@@ -310,6 +310,92 @@ main.content {
   transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background: linear-gradient(180deg, var(--paper) 0%, #f8f6f2 100%);
+}
+
+.auth-card {
+  width: min(100%, 390px);
+  padding: 24px 22px 18px;
+  border-color: var(--rule);
+  box-shadow: var(--shadow-md);
+}
+
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.auth-logo {
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  border-radius: 16px;
+  box-shadow: 0 10px 26px rgba(27, 36, 48, 0.08);
+}
+
+.auth-brand-name {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.auth-brand-tag {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.auth-header {
+  margin-bottom: 10px;
+}
+
+.auth-header .section-label {
+  margin: 0;
+}
+
+.auth-input {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.auth-submit,
+.auth-toggle {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.auth-toggle {
+  margin-top: 10px;
+}
+
+.auth-error {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+.auth-notice {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
 .margin-card {
   position: relative;
   padding-left: 26px;
@@ -332,6 +418,42 @@ main.content {
 .margin-card.tone-rejected::before { background: var(--flag-red); }
 .margin-card.tone-restricted::before { background: var(--flag-lock); }
 .margin-card.tone-neutral::before { background: var(--brass-soft); }
+
+/* ---------------------------------------------------------------------
+   Start Here (onboarding)
+------------------------------------------------------------------------ */
+.start-here-explainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.start-here-explainer b {
+  font-size: 13px;
+  color: var(--ink);
+}
+.start-here-explainer p {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin: 3px 0 0;
+  line-height: 1.5;
+}
+
+.start-here-recs {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.start-here-rec {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--rule-soft);
+}
+.start-here-rec:first-child { border-top: none; padding-top: 0; }
 
 /* ---------------------------------------------------------------------
    Upload panel
@@ -772,6 +894,20 @@ input[type="range"] {
   margin-top: 7px;
   border-left: 2px solid var(--rule);
   padding-left: 9px;
+}
+
+/* Clause-search result body -- the clause text itself, not a paraphrase,
+   so it reads in the document's own voice (upright serif) rather than the
+   italic used for citation excerpts elsewhere. */
+.clause-excerpt {
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text);
+  margin: 10px 0 0;
+  border-left: 2px solid var(--brass-soft);
+  padding-left: 12px;
+  white-space: pre-wrap;
 }
 
 .modal-backdrop {

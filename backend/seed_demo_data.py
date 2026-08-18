@@ -38,9 +38,11 @@ def main():
         meta_dict["filename"] = path.name
         meta_dict["usage_count"] = 0
         vectorstore.add_document(doc_id, text, meta_dict)
+        clauses = ingestion.split_into_clauses(text)
+        vectorstore.add_document_clauses(doc_id, clauses)
         print(f"  + {path.name:45s} -> {doc_id}  "
               f"[{metadata.document_type or '?'}, {metadata.document_date or '?'}, "
-              f"partner_approved={metadata.partner_approved}]")
+              f"partner_approved={metadata.partner_approved}, {len(clauses)} clauses]")
 
     print("Done. Start the API with: uvicorn app.main:app --reload --port 8000")
 

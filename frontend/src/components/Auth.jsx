@@ -33,12 +33,22 @@ export default function Auth() {
   };
 
   return (
-    <div className="app-shell" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-      <form className="card" style={{ width: 360 }} onSubmit={submit}>
-        <div className="section-label">{mode === "login" ? "Sign in" : "Create account"}</div>
+    <div className="auth-shell">
+      <form className="card auth-card" onSubmit={submit}>
+        <div className="auth-brand" aria-label="Kitsu AI brand">
+          <img src="/kitsu-logo.png" alt="Kitsu AI logo" className="auth-logo" />
+          <div>
+            <div className="auth-brand-name">Kitsu AI</div>
+            <div className="auth-brand-tag">Document intelligence</div>
+          </div>
+        </div>
+
+        <div className="auth-header">
+          <div className="section-label">{mode === "login" ? "Sign in" : "Create account"}</div>
+        </div>
+
         <input
-          className="filter-input"
-          style={{ width: "100%", marginTop: 10 }}
+          className="filter-input auth-input"
           type="email"
           placeholder="Email"
           value={email}
@@ -46,8 +56,7 @@ export default function Auth() {
           required
         />
         <input
-          className="filter-input"
-          style={{ width: "100%", marginTop: 10 }}
+          className="filter-input auth-input"
           type="password"
           placeholder="Password"
           value={password}
@@ -55,15 +64,16 @@ export default function Auth() {
           required
           minLength={6}
         />
-        {error && <div className="error-banner" style={{ marginTop: 10 }}>{error}</div>}
-        {notice && <p style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{notice}</p>}
-        <button className="btn btn-brass" type="submit" disabled={busy} style={{ marginTop: 12, width: "100%" }}>
+        {error && <div className="error-banner auth-error">{error}</div>}
+        {notice && <p className="auth-notice">{notice}</p>}
+
+        <button className="btn btn-primary auth-submit" type="submit" disabled={busy}>
           {busy ? "Please wait..." : mode === "login" ? "Sign in" : "Sign up"}
         </button>
+
         <button
           type="button"
-          className="btn btn-ghost"
-          style={{ marginTop: 8, width: "100%" }}
+          className="btn btn-ghost auth-toggle"
           onClick={() => {
             setMode(mode === "login" ? "signup" : "login");
             setError(null);

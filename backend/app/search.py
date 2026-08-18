@@ -17,6 +17,9 @@ from datetime import datetime
 from app import matters, vectorstore
 from app.llm_client import call_llm_json
 from app.models import (
+    ClauseAccessRestricted,
+    ClauseResult,
+    ClauseSearchResponse,
     DocumentMetadata,
     LineageCluster,
     LineageEdge,
@@ -266,6 +269,54 @@ def run_search(req, user_email: str) -> SearchResponse:
         kept=[to_result_item(c) for c in kept_raw],
         other_candidates=[to_result_item(c) for c in other_raw],
         rejected=rejected_items,
+        access_restricted=access_restricted,
+    )
+
+
+def run_clause_search(req, user_email: str) -> ClauseSearchResponse:
+    """Clause-level counterpart to run_search: instead of ranking whole
+    documents, ranks individual clauses (see ingestion.split_into_clauses)
+    so a lawyer can find "the indemnity cap" directly instead of a
+    document that merely mentions indemnity somewhere in 12 pages.
+
+    No LLM relevance pass here, unlike run_search: a clause is already a
+    narrow, specific unit of text (not a whole document that might
+    mention a topic only in passing), so raw embedding similarity is a
+    much more reliable relevance signal at this granularity, and skipping
+    the extra LLM call keeps clause search fast."""
+    candidates = vectorstore.query_clauses(req.query, n_results=max(req.candidate_pool, 1))
+
+    walls = matters.load_walls()
+    visible, access_restricted = [], []
+    for c in candidates:
+        if matters.is_blocked(c["meta"], user_email, walls):
+            access_restricted.append(ClauseAccessRestricted(
+                doc_id=c["doc_id"],
+                filename=c["meta"].get("filename", c["doc_id"]),
+                reason="This matter is walled off. You don't have access to view it.",
+            ))
+        else:
+            visible.append(c)
+
+    visible.sort(key=lambda c: c["similarity"], reverse=True)
+    keep_n = max(req.keep_top, 0)
+    kept = [
+        ClauseResult(
+            doc_id=c["doc_id"],
+            filename=c["meta"].get("filename", c["doc_id"]),
+            clause_index=c["clause_index"],
+            label=c["label"],
+            text=c["text"],
+            similarity=round(c["similarity"], 3),
+            metadata=DocumentMetadata(**c["meta"]),
+        )
+        for c in visible[:keep_n]
+    ]
+
+    return ClauseSearchResponse(
+        query=req.query,
+        candidates_considered=len(candidates),
+        kept=kept,
         access_restricted=access_restricted,
     )
 
