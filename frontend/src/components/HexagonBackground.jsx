@@ -37,9 +37,6 @@ export default function HexagonBackground({ hexagonSize = HEX_SIZE, hexagonMargi
   const containerRef = useRef(null);
   const [hexes, setHexes] = useState([]);
   const [pointer, setPointer] = useState(null); // {x, y} in container-local px, or null
-  const [hoverTone, setHoverTone] = useState(HEX_DEFAULT_COLOR);
-  const pointerActiveRef = useRef(false);
-  const hasLeftViewportRef = useRef(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -56,22 +53,10 @@ export default function HexagonBackground({ hexagonSize = HEX_SIZE, hexagonMargi
 
     const trackPointer = (event) => {
       const rect = el.getBoundingClientRect();
-      if (!pointerActiveRef.current) {
-        if (hasLeftViewportRef.current) {
-          const nextTone = Math.random() < 0.5 ? HEX_DEFAULT_COLOR : "var(--ink)";
-          setHoverTone(nextTone);
-        }
-        pointerActiveRef.current = true;
-      }
       setPointer({ x: event.clientX - rect.left, y: event.clientY - rect.top });
     };
     const resetPointer = (event) => {
-      if (!event.relatedTarget) {
-        setPointer(null);
-        pointerActiveRef.current = false;
-        hasLeftViewportRef.current = true;
-        setHoverTone(HEX_DEFAULT_COLOR);
-      }
+      if (!event.relatedTarget) setPointer(null);
     };
     window.addEventListener("pointermove", trackPointer, { passive: true });
     window.addEventListener("pointerout", resetPointer, { passive: true });
@@ -106,7 +91,7 @@ export default function HexagonBackground({ hexagonSize = HEX_SIZE, hexagonMargi
               width: hexagonSize * 2,
               height: Math.sqrt(3) * hexagonSize,
               margin: hexagonMargin,
-              background: pointer ? hoverTone : HEX_DEFAULT_COLOR,
+              background: HEX_DEFAULT_COLOR,
               opacity: (HEX_BASE_OPACITY + glow * HEX_GLOW_OPACITY) * HEX_OPACITY_SCALE,
               transform: `scale(${1 + glow * 0.06})`,
             }}
