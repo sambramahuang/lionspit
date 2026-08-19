@@ -305,14 +305,15 @@ main.content {
 
 .page-title {
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: 43px;
   font-weight: 600;
   letter-spacing: -0.2px;
   margin: 0 0 7px;
 }
 
 .page-subtitle {
-  color: var(--text-muted);
+  color: var(--text);
+  font-family: var(--font-display);
   font-size: 14px;
   margin: 0 auto;
   max-width: 640px;
