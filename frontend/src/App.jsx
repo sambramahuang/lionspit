@@ -4,14 +4,14 @@ import { supabase, supabaseConfigError } from "./supabaseClient.js";
 import Auth from "./components/Auth.jsx";
 import MattersView from "./components/MattersView.jsx";
 import PageWipe from "./components/PageWipe.jsx";
-import StartHereView from "./components/StartHereView.jsx";
+import HeroView from "./components/HeroView.jsx";
+import OverviewView from "./components/OverviewView.jsx";
 import UploadPanel from "./components/UploadPanel.jsx";
 import DocumentLibrary from "./components/DocumentLibrary.jsx";
 import LineageGraph from "./components/LineageGraph.jsx";
 import SearchPage from "./components/SearchPage.jsx";
 import PreviewModal from "./components/PreviewModal.jsx";
-import SlicedWaves from "./components/SlicedWaves/SlicedWaves.jsx";
-import GradientMotionBackground from "./components/GradientMotionBackground.jsx";
+import AppBackground from "./components/AppBackground.jsx";
 import Dock from "./components/Dock/Dock.jsx";
 import TiltedCard from "./components/TiltedCard/TiltedCard.jsx";
 import { useDocumentPreview } from "./hooks/useDocumentPreview.js";
@@ -179,32 +179,14 @@ export default function App() {
         <PageWipe phase="revealing" onRevealComplete={() => setAuthWipePhase(null)} />
       )}
       <div className="app-bg">
-        <GradientMotionBackground
-          colorStops={["#c79a55", "#a9752f", "#e0b878"]}
-          baseBackground="transparent"
-          blendMode="soft-light"
-          opacity={55}
-          contrast={110}
-          shapeStyle="Blob"
-          blobCount={3}
-          blurAmount={140}
-          sizeMin={55}
-          sizeMax={85}
-          animate={true}
-          speed={40}
-          motionStyle="Drift"
-          motionRange={60}
-          randomDirection={true}
-          easeType="ease-in-out"
-          seed={7}
-        />
+        <AppBackground />
       </div>
 
       <header className="topbar">
         <div className="brand">
           <TiltedCard
-            imageSrc="/kitsu-logo.png"
-            altText="Kitsu AI"
+            imageSrc="/icon.png"
+            altText="Kitsu AI icon"
             captionText="Kitsu AI"
             containerHeight="96px"
             containerWidth="96px"
@@ -241,8 +223,10 @@ export default function App() {
       </header>
 
       <main className="content">
-        {displayedTab === "start" && (
-          <StartHereView onPreview={preview.openPreview} onGoToSearch={() => changeTab("search")} />
+        {displayedTab === "start" && <HeroView onExplore={() => changeTab("overview")} />}
+
+        {displayedTab === "overview" && (
+          <OverviewView onPreview={preview.openPreview} onGoToSearch={() => changeTab("search")} />
         )}
 
         {displayedTab === "library" && (

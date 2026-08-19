@@ -24,7 +24,6 @@ export function BentoCard({ icon, name, description, wide, tall, children }) {
         {icon}
       </div>
       <div className="bento-card-body">
-        {icon && <div className="bento-card-icon">{icon}</div>}
         <p className="bento-card-name">{name}</p>
         <p className="bento-card-desc">{description}</p>
         {children}

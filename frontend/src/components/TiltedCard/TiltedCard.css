@@ -35,7 +35,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 15px;
   will-change: transform;
   transform: translateZ(0);

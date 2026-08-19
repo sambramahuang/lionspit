@@ -24,7 +24,7 @@ function byTrust(a, b) {
   return (b.usage_count || 0) - (a.usage_count || 0);
 }
 
-export default function StartHereView({ onPreview, onGoToSearch }) {
+export default function OverviewView({ onPreview, onGoToSearch }) {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,17 +65,12 @@ export default function StartHereView({ onPreview, onGoToSearch }) {
     <>
       <div className="page-header">
         <h1 className="page-title">Start here</h1>
-        <p className="page-subtitle">
-          New to the team, or just picking up something outside your usual practice area? This is
-          the firm's collective best work, organized so you don't have to already know where to
-          look.
-        </p>
       </div>
 
       <div className="section-label" style={{ margin: "0 0 10px" }}>What this tool does</div>
       <BentoGrid>
         <BentoCard
-          wide
+          tall
           icon={<SearchGlyph />}
           name="Search in plain English"
           description='No need to know legal terms of art — describe what you need ("cap on founder liability if they breach the agreement") and the system finds it, ranked by similarity, recency, firm usage, partner approval, and jurisdiction match.'
@@ -91,6 +86,7 @@ export default function StartHereView({ onPreview, onGoToSearch }) {
           description="Access is matter-level and tied to a verified login, not a toggle anyone can flip. A walled matter is invisible in search, library, and lineage to anyone not on its list."
         />
         <BentoCard
+          wide
           icon={<ReasonGlyph />}
           name="See why, not just what"
           description="Every result explains itself: why it ranked, why an outdated version was rejected, or why it's restricted — never a silent drop."
@@ -101,7 +97,6 @@ export default function StartHereView({ onPreview, onGoToSearch }) {
           description="Documents from the same matter are clustered automatically, with the current version at the hub and every superseded draft explained."
         />
         <BentoCard
-          wide
           icon={<CiteGlyph />}
           name="Draft with citations"
           description="Generate a first draft strictly from the sources you select — every clause traces back to its exact source document and excerpt, and anything the sources don't cover is flagged as a gap instead of invented."
@@ -113,6 +108,13 @@ export default function StartHereView({ onPreview, onGoToSearch }) {
           Go to Search &amp; Draft
         </button>
       )}
+
+      <div className="section-label" style={{ margin: "30px 0 10px" }}>The firm's best work</div>
+      <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.6, margin: "0 0 6px", maxWidth: 640 }}>
+        New to the team, or just picking up something outside your usual practice area? This is
+        the firm's collective best work, organized so you don't have to already know where to
+        look.
+      </p>
 
       {error && <div className="error-banner">{error}</div>}
       {loading && <p className="spinner-text">Loading...</p>}

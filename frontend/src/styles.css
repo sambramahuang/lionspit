@@ -297,6 +297,51 @@ main.content {
   z-index: 0;
 }
 
+.hero {
+  text-align: center;
+  padding: 44px 20px 40px;
+  margin-bottom: 12px;
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-size: 68px;
+  font-weight: 600;
+  letter-spacing: -0.8px;
+  line-height: 1.05;
+  color: var(--ink);
+  margin: 0 0 16px;
+}
+
+.hero-subtitle {
+  font-family: var(--font-ui);
+  font-size: 17px;
+  color: var(--text-muted);
+  max-width: 560px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .hero-title { font-size: 44px; }
+}
+
+/* Start Here is now just the hero -- the bento/firm's-best-work content
+   moved to its own Overview page (see OverviewView.jsx) -- so it gets
+   real landing-page presence instead of sitting at the top of a longer
+   scroll. */
+.hero-standalone {
+  min-height: calc(100vh - 260px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-cta {
+  margin-top: 28px;
+}
+
 .page-header {
   position: relative;
   text-align: center;
@@ -335,19 +380,24 @@ main.content {
 .auth-shell {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 20px;
+  padding: 40px 20px;
   background: linear-gradient(180deg, var(--paper) 0%, #f8f6f2 100%);
 }
 
 .auth-card {
   position: relative;
   overflow: hidden;
-  width: min(100%, 390px);
-  padding: 24px 22px 18px;
+  width: min(100%, 480px);
+  margin: 0 auto;
+  padding: 30px 28px 24px;
   border-color: var(--rule);
   box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* Registering --shine-angle as an <angle> lets it animate smoothly through
@@ -398,49 +448,64 @@ main.content {
 }
 
 .auth-logo {
-  width: 84px;
-  height: 84px;
+  width: 151px;
+  height: 151px;
   object-fit: contain;
-  border-radius: 16px;
-  box-shadow: 0 10px 26px rgba(27, 36, 48, 0.08);
+  border-radius: 0;
+  box-shadow: none;
+  filter: brightness(0);
+}
+
+.auth-brand-external {
+  margin-bottom: 23px;
+  padding-bottom: 0;
+  border-bottom: 0;
+  color: #000;
+}
+
+.auth-brand-external * {
+  color: #000;
 }
 
 .auth-brand-name {
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 28px;
   line-height: 1.1;
-  color: var(--ink);
+  color: #000;
 }
 
 .auth-brand-tag {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: #000;
   margin-top: 2px;
 }
 
 .auth-header {
-  margin-bottom: 10px;
+  width: min(100%, 420px);
+  margin-bottom: 14px;
+  text-align: center;
 }
 
 .auth-header .section-label {
   margin: 0;
 }
 
-.auth-input {
+.auth-card .auth-input {
   width: 100%;
-  margin-top: 10px;
+  max-width: 420px;
+  margin-top: 12px;
 }
 
 .auth-submit,
 .auth-toggle {
-  width: 100%;
-  margin-top: 12px;
+  width: min(100%, 420px);
+  margin-top: 16px;
 }
 
 .auth-toggle {
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .auth-error {
@@ -453,6 +518,21 @@ main.content {
   font-size: 12.5px;
   color: var(--text-muted);
   line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  .auth-shell {
+    padding: 28px 16px;
+  }
+
+  .auth-logo {
+    width: 130px;
+    height: 130px;
+  }
+
+  .auth-card {
+    padding: 24px 18px 20px;
+  }
 }
 
 .margin-card {
@@ -485,6 +565,7 @@ main.content {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   grid-auto-rows: minmax(120px, auto);
+  grid-auto-flow: dense;
   gap: 14px;
 }
 @media (max-width: 720px) {
@@ -521,7 +602,7 @@ main.content {
   right: -14px;
   bottom: -16px;
   color: var(--brass);
-  opacity: 0.07;
+  opacity: 0.18;
   transform: rotate(-8deg);
   pointer-events: none;
 }
@@ -532,30 +613,18 @@ main.content {
   z-index: 1;
 }
 
-.bento-card-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  background: var(--brass-bg);
-  color: var(--brass-dark);
-  margin-bottom: 10px;
-}
-.bento-card-icon svg { width: 18px; height: 18px; }
-
 .bento-card-name {
   font-family: var(--font-display);
-  font-size: 15.5px;
+  font-size: 24px;
+  font-weight: 400;
   color: var(--ink);
-  margin: 0 0 4px;
+  margin: 0 0 6px;
 }
 
 .bento-card-desc {
-  font-size: 12.5px;
-  color: var(--text-muted);
-  line-height: 1.55;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
   margin: 0;
   max-width: 42ch;
 }
@@ -1411,4 +1480,22 @@ input[type="range"] {
     width: 56px !important;
     height: 56px !important;
   }
+}
+
+/* ---------------------------------------------------------------------
+   Hexagon background (replaces SlicedWaves/GradientMotionBackground)
+------------------------------------------------------------------------ */
+.hexagon-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.hexagon-cell {
+  position: absolute;
+  background: var(--brass);
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  transition: opacity 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+  pointer-events: none;
 }
