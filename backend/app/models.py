@@ -5,6 +5,8 @@ since the metadata schema below IS the product (it's the structured
 "knowhow" the rest of the system is built on).
 """
 
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
