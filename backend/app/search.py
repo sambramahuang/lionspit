@@ -11,8 +11,9 @@ Flow (mirrors the demo script):
   5. Whatever's left, ranked, becomes "kept" (top N) and
      "other_candidates" (the rest) -- both filterable/comparable in the UI.
 """
+
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app import matters, vectorstore
 from app.llm_client import call_llm_json
@@ -79,7 +80,10 @@ def _judge_relevance_with_llm(query: str, candidates: list) -> dict:
     for j in data.get("judgments", []):
         doc_id = j.get("doc_id")
         if doc_id:
-            out[doc_id] = {"relevant": bool(j.get("relevant", True)), "reason": j.get("reason", "")}
+            out[doc_id] = {
+                "relevant": bool(j.get("relevant", True)),
+                "reason": j.get("reason", ""),
+            }
     return out
 
 
@@ -92,6 +96,26 @@ def _parse_date(value):
         except (ValueError, TypeError):
             continue
     return None
+
+
+RECENCY_WINDOWS = {
+    "30d": timedelta(days=30),
+    "6m": timedelta(days=182),
+    "1y": timedelta(days=365),
+    "3y": timedelta(days=365 * 3),
+    "5y": timedelta(days=365 * 5),
+}
+
+
+def _matches_recency(value: str | None, window: str | None) -> bool:
+    if not window:
+        return True
+    document_date = _parse_date(value)
+    age = RECENCY_WINDOWS.get(window)
+    if not document_date or not age:
+        return False
+    now = datetime.now()
+    return now - age <= document_date <= now
 
 
 def _normalize(values: dict) -> dict:
@@ -115,12 +139,14 @@ def run_search(req, user_email: str) -> SearchResponse:
     candidates = []
     for doc_id, text, meta, dist in zip(ids, docs, metas, distances):
         similarity = max(0.0, min(1.0, 1 - dist))
-        candidates.append({
-            "doc_id": doc_id,
-            "text": text,
-            "meta": meta,
-            "similarity": similarity,
-        })
+        candidates.append(
+            {
+                "doc_id": doc_id,
+                "text": text,
+                "meta": meta,
+                "similarity": similarity,
+            }
+        )
 
     # --- Step 1: matter-level ethical wall ------------------------------
     walls = matters.load_walls()
@@ -128,22 +154,46 @@ def run_search(req, user_email: str) -> SearchResponse:
     visible = []
     for c in candidates:
         if matters.is_blocked(c["meta"], user_email, walls):
-            access_restricted.append(RejectedItem(
-                doc_id=c["doc_id"],
-                filename=c["meta"].get("filename", c["doc_id"]),
-                metadata=DocumentMetadata(**c["meta"]),
-                reason="This matter is walled off. You don't have access to view it.",
-            ))
+            access_restricted.append(
+                RejectedItem(
+                    doc_id=c["doc_id"],
+                    filename=c["meta"].get("filename", c["doc_id"]),
+                    metadata=DocumentMetadata(**c["meta"]),
+                    reason="This matter is walled off. You don't have access to view it.",
+                )
+            )
         else:
             visible.append(c)
 
     # --- Step 2: optional hard filters (jurisdiction / matter type) ----
     if req.jurisdiction_filter:
-        visible = [c for c in visible
-                   if req.jurisdiction_filter.lower() in str(c["meta"].get("jurisdiction", "")).lower()] or visible
+        visible = [
+            c
+            for c in visible
+            if req.jurisdiction_filter.lower()
+            in str(c["meta"].get("jurisdiction", "")).lower()
+        ] or visible
     if req.matter_type_filter:
-        visible = [c for c in visible
-                   if req.matter_type_filter.lower() in str(c["meta"].get("matter_type", "")).lower()] or visible
+        visible = [
+            c
+            for c in visible
+            if req.matter_type_filter.lower()
+            in str(c["meta"].get("matter_type", "")).lower()
+        ] or visible
+    if req.recency_filter:
+        visible = [
+            c
+            for c in visible
+            if _matches_recency(c["meta"].get("document_date"), req.recency_filter)
+        ]
+    if req.status_filters:
+        visible = [c for c in visible if c["meta"].get("status") in req.status_filters]
+    if req.document_type_filters:
+        visible = [
+            c
+            for c in visible
+            if c["meta"].get("document_type") in req.document_type_filters
+        ]
 
     visible = visible[: max(req.candidate_pool, 1)]
 
@@ -162,7 +212,12 @@ def run_search(req, user_email: str) -> SearchResponse:
         meta = c["meta"]
         partner_score = 1.0 if meta.get("partner_approved") is True else 0.0
         if req.jurisdiction_filter:
-            jurisdiction_score = 1.0 if req.jurisdiction_filter.lower() in str(meta.get("jurisdiction", "")).lower() else 0.0
+            jurisdiction_score = (
+                1.0
+                if req.jurisdiction_filter.lower()
+                in str(meta.get("jurisdiction", "")).lower()
+                else 0.0
+            )
         else:
             jurisdiction_score = 0.5  # neutral when no filter is applied
 
@@ -173,7 +228,13 @@ def run_search(req, user_email: str) -> SearchResponse:
             "partner_approval": partner_score,
             "jurisdiction_match": jurisdiction_score,
         }
-        total_weight = (w.similarity + w.recency + w.frequency + w.partner_approval + w.jurisdiction_match) or 1.0
+        total_weight = (
+            w.similarity
+            + w.recency
+            + w.frequency
+            + w.partner_approval
+            + w.jurisdiction_match
+        ) or 1.0
         score = (
             breakdown["similarity"] * w.similarity
             + breakdown["recency"] * w.recency
@@ -204,21 +265,35 @@ def run_search(req, user_email: str) -> SearchResponse:
             best_date = _parse_date(best["meta"].get("document_date"))
             other_date = _parse_date(other["meta"].get("document_date"))
             if best_date and other_date and other_date < best_date:
-                reasons.append(f"superseded by a later version dated {best['meta'].get('document_date')}")
-            if best["meta"].get("partner_approved") is True and other["meta"].get("partner_approved") is not True:
-                reasons.append("not partner-approved, while a partner-approved version of this matter exists")
-            if other["meta"].get("version") and best["meta"].get("version") and \
-               str(other["meta"].get("version")) < str(best["meta"].get("version")):
-                reasons.append(f"lower version ({other['meta'].get('version')}) than the current one ({best['meta'].get('version')})")
+                reasons.append(
+                    f"superseded by a later version dated {best['meta'].get('document_date')}"
+                )
+            if (
+                best["meta"].get("partner_approved") is True
+                and other["meta"].get("partner_approved") is not True
+            ):
+                reasons.append(
+                    "not partner-approved, while a partner-approved version of this matter exists"
+                )
+            if (
+                other["meta"].get("version")
+                and best["meta"].get("version")
+                and str(other["meta"].get("version")) < str(best["meta"].get("version"))
+            ):
+                reasons.append(
+                    f"lower version ({other['meta'].get('version')}) than the current one ({best['meta'].get('version')})"
+                )
 
             if reasons:
                 rejected_ids.add(other["doc_id"])
-                rejected_items.append(RejectedItem(
-                    doc_id=other["doc_id"],
-                    filename=other["meta"].get("filename", other["doc_id"]),
-                    metadata=DocumentMetadata(**other["meta"]),
-                    reason="Rejected: " + "; ".join(reasons) + ".",
-                ))
+                rejected_items.append(
+                    RejectedItem(
+                        doc_id=other["doc_id"],
+                        filename=other["meta"].get("filename", other["doc_id"]),
+                        metadata=DocumentMetadata(**other["meta"]),
+                        reason="Rejected: " + "; ".join(reasons) + ".",
+                    )
+                )
 
     remaining = [c for c in visible if c["doc_id"] not in rejected_ids]
 
@@ -234,19 +309,24 @@ def run_search(req, user_email: str) -> SearchResponse:
         for c in remaining:
             j = judgments.get(c["doc_id"])
             if j is None:
-                still_relevant.append(c)  # no judgment returned for this one -- fail open, keep it
+                still_relevant.append(
+                    c
+                )  # no judgment returned for this one -- fail open, keep it
                 continue
             c["llm_relevance_reason"] = j["reason"]
             if j["relevant"]:
                 still_relevant.append(c)
             else:
                 rejected_ids.add(c["doc_id"])
-                rejected_items.append(RejectedItem(
-                    doc_id=c["doc_id"],
-                    filename=c["meta"].get("filename", c["doc_id"]),
-                    metadata=DocumentMetadata(**c["meta"]),
-                    reason="Not relevant to this query: " + (j["reason"] or "judged not relevant."),
-                ))
+                rejected_items.append(
+                    RejectedItem(
+                        doc_id=c["doc_id"],
+                        filename=c["meta"].get("filename", c["doc_id"]),
+                        metadata=DocumentMetadata(**c["meta"]),
+                        reason="Not relevant to this query: "
+                        + (j["reason"] or "judged not relevant."),
+                    )
+                )
         remaining = still_relevant
 
     keep_n = max(req.keep_top, 0)
@@ -284,17 +364,21 @@ def run_clause_search(req, user_email: str) -> ClauseSearchResponse:
     mention a topic only in passing), so raw embedding similarity is a
     much more reliable relevance signal at this granularity, and skipping
     the extra LLM call keeps clause search fast."""
-    candidates = vectorstore.query_clauses(req.query, n_results=max(req.candidate_pool, 1))
+    candidates = vectorstore.query_clauses(
+        req.query, n_results=max(req.candidate_pool, 1)
+    )
 
     walls = matters.load_walls()
     visible, access_restricted = [], []
     for c in candidates:
         if matters.is_blocked(c["meta"], user_email, walls):
-            access_restricted.append(ClauseAccessRestricted(
-                doc_id=c["doc_id"],
-                filename=c["meta"].get("filename", c["doc_id"]),
-                reason="This matter is walled off. You don't have access to view it.",
-            ))
+            access_restricted.append(
+                ClauseAccessRestricted(
+                    doc_id=c["doc_id"],
+                    filename=c["meta"].get("filename", c["doc_id"]),
+                    reason="This matter is walled off. You don't have access to view it.",
+                )
+            )
         else:
             visible.append(c)
 
@@ -338,12 +422,22 @@ def _supersession_reason(current_meta: dict, other_meta: dict) -> str:
     current_date = _parse_date(current_meta.get("document_date"))
     other_date = _parse_date(other_meta.get("document_date"))
     if current_date and other_date and other_date < current_date:
-        reasons.append(f"superseded by a later version dated {current_meta.get('document_date')}")
-    if current_meta.get("partner_approved") is True and other_meta.get("partner_approved") is not True:
+        reasons.append(
+            f"superseded by a later version dated {current_meta.get('document_date')}"
+        )
+    if (
+        current_meta.get("partner_approved") is True
+        and other_meta.get("partner_approved") is not True
+    ):
         reasons.append("not partner-approved, while a partner-approved version exists")
-    if other_meta.get("version") and current_meta.get("version") and \
-       str(other_meta.get("version")) < str(current_meta.get("version")):
-        reasons.append(f"lower version ({other_meta.get('version')}) than the current one ({current_meta.get('version')})")
+    if (
+        other_meta.get("version")
+        and current_meta.get("version")
+        and str(other_meta.get("version")) < str(current_meta.get("version"))
+    ):
+        reasons.append(
+            f"lower version ({other_meta.get('version')}) than the current one ({current_meta.get('version')})"
+        )
     return "; ".join(reasons) if reasons else "earlier document in the same matter"
 
 
@@ -359,7 +453,11 @@ def compute_lineage(user_email: str) -> LineageResponse:
     run_search's access_restricted step, so a walled matter's documents
     never surface in this view for someone outside its allow-list."""
     walls = matters.load_walls()
-    records = [r for r in vectorstore.list_all() if not matters.is_blocked(r["metadata"], user_email, walls)]
+    records = [
+        r
+        for r in vectorstore.list_all()
+        if not matters.is_blocked(r["metadata"], user_email, walls)
+    ]
 
     grouped = defaultdict(list)
     for r in records:
@@ -405,13 +503,15 @@ def compute_lineage(user_email: str) -> LineageResponse:
         if reference:
             label = f"{reference} — {label}"
 
-        clusters.append(LineageCluster(
-            key=key,
-            label=label,
-            current_doc_id=current["doc_id"],
-            nodes=[_to_lineage_node(r) for r in group_sorted],
-            edges=edges,
-        ))
+        clusters.append(
+            LineageCluster(
+                key=key,
+                label=label,
+                current_doc_id=current["doc_id"],
+                nodes=[_to_lineage_node(r) for r in group_sorted],
+                edges=edges,
+            )
+        )
 
     clusters.sort(key=lambda c: len(c.nodes), reverse=True)
     return LineageResponse(clusters=clusters, standalone=standalone)
