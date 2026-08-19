@@ -17,6 +17,7 @@ class DocumentMetadata(BaseModel):
     """
     client_name: Optional[str] = None
     counterparty_name: Optional[str] = None
+    matter_reference: Optional[str] = None
     matter_type: Optional[str] = None
     practice_area: Optional[str] = None
     jurisdiction: Optional[str] = None

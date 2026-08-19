@@ -7,28 +7,58 @@ is identified identically everywhere. Every place that returns documents
 to the frontend (search, document list/get, lineage, draft) goes through
 is_blocked()/is_key_blocked() here instead of re-implementing the check.
 """
+import re
 from collections import defaultdict
 
 from app import vectorstore
 from app.models import ConflictFlag, MatterSummary, MatterWallInfo
 
 
+def _normalize_reference(ref: str) -> str:
+    # Strips everything but the code itself so formatting noise ("HC/S
+    # 214/2026" vs "HC-S-214-2026" vs "HC S 214 2026") doesn't fracture one
+    # matter into several -- same idea as case-folding a name, just for a
+    # reference code instead of free text.
+    return re.sub(r"[^a-z0-9]", "", ref.lower())
+
+
 def cluster_key(meta: dict) -> str:
     """Same-matter grouping so we can compare versions against each other
-    rather than against the whole corpus. Requires matching named parties --
-    matter_type/jurisdiction alone are category-level, not matter-level, so
-    two unrelated clients' documents of the same type (e.g. two different
-    companies' shareholders' agreements) must never merge into one lineage.
+    rather than against the whole corpus.
 
-    Matches on the *unordered set* of client_name + counterparty_name rather
-    than client_name alone: when a document names two parties, extraction
-    can't always tell which one is "the client" (e.g. a tenancy renewal
-    might get filed with the tenant as client_name while the original lease
-    got filed with the landlord as client_name) -- matching on the pair is
-    robust to that, since both documents still name the same two parties.
+    Prefers the firm's own matter/case reference number (matter_reference)
+    when the document states one: a real case file mixes document types --
+    client correspondence, a billing summary, a draft, a final/executed
+    version, an internal memo -- and the metadata LLM can reasonably tag
+    those with different matter_type or even practice_area guesses even
+    though they're unambiguously the same file. A billing summary isn't
+    "about" litigation the way a court submission is, but it belongs to the
+    exact same matter. An explicit, firm-assigned reference number is a
+    stronger and type-agnostic signal of "same matter" than an inferred
+    combination of party names + document category ever can be, so it wins
+    when present.
 
-    When no party name is available there isn't enough signal to safely
-    group the document with anything, so it gets a key unique to itself."""
+    Falls back to the previous heuristic -- the *unordered set* of
+    client_name + counterparty_name, plus matter_type + jurisdiction -- for
+    documents that don't cite a reference number (most informal
+    correspondence, or a brand-new matter that hasn't been assigned one
+    yet). matter_type/jurisdiction alone are category-level, not
+    matter-level, so two unrelated clients' documents of the same type
+    (e.g. two different companies' shareholders' agreements) must never
+    merge into one lineage this way. Matching on the *pair* of party names
+    rather than client_name alone is robust to extraction not always being
+    able to tell which party is "the client" (e.g. a tenancy renewal might
+    get filed with the tenant as client_name while the original lease got
+    filed with the landlord as client_name) -- both documents still name
+    the same two parties either way.
+
+    When neither a reference number nor a party name is available there
+    isn't enough signal to safely group the document with anything, so it
+    gets a key unique to itself."""
+    ref = _normalize_reference(str(meta.get("matter_reference") or "").strip())
+    if ref:
+        return f"ref|{ref}"
+
     parties = sorted({
         p for p in (
             str(meta.get("client_name", "")).lower().strip(),
@@ -98,6 +128,13 @@ def summarize(user_email: str, is_partner: bool) -> list[MatterSummary]:
         matter_type = first.get("matter_type") or "Matter"
         jurisdiction = first.get("jurisdiction")
         label = f"{client} — {matter_type} · {jurisdiction}" if jurisdiction else f"{client} — {matter_type}"
+        # Surface the reference actually driving the grouping (see
+        # cluster_key) so a mixed-document-type matter's label doesn't look
+        # arbitrary -- it's the same explicit case/matter number every
+        # document in the group cites, not an inferred guess.
+        reference = next((g["metadata"].get("matter_reference") for g in group if g["metadata"].get("matter_reference")), None)
+        if reference:
+            label = f"{reference} — {label}"
 
         out.append(MatterSummary(
             matter_key=key,

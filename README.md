@@ -54,11 +54,18 @@ Fill in `.env`:
 - `PARTNER_EMAILS` — comma-separated emails allowed to set/edit matter
   walls (e.g. your own, for testing).
 
-Seed the demo corpus (17 deliberately messy sample documents — duplicate
-versions, an outdated tenancy agreement, a partner-approved shareholders'
-agreement, one filed under different terminology, a restricted settlement
-memo, and a couple of irrelevant internal emails/memos to prove rejection
-actually works):
+Seed the demo corpus — `case_documents/` at the repo root, 30 real
+`.docx`/`.pdf` files across 5 matters: two Singapore High Court disputes
+(each with an application for specific production of documents) plus
+three transactional matters (a residential conveyancing, a Series B
+shareholders' agreement, and a Vietnam trademark licence). Every matter
+carries client correspondence on firm letterhead, a billing summary, a
+draft with genuine partner mark-up (struck-through deletions, underlined
+insertions, marginal reviewer comments), a redlined/negotiated version, a
+final/executed version, and at least one same-matter "noise" document
+that shouldn't surface for an unrelated query. See
+`case_documents/README.md` for the full per-matter breakdown and ground
+truth:
 
 ```bash
 python seed_demo_data.py --reset
@@ -68,7 +75,13 @@ This calls the LLM once per document to auto-tag it — that's the "low
 -effort capture" step, not a canned fixture — and also splits each
 document into individually-searchable clauses (no extra LLM call; see the
 clause search bullet under "How it works"). Re-run any time you add more
-files to `backend/demo_corpus/`.
+files under `case_documents/`.
+
+Deliberately **not** seeded: `backend/live_ingest_demo/`, a single
+new-client intake memo held back so you can ingest it live through the
+Library tab's Ingest button during the demo (step 10 below) and watch the
+conflict flag appear in real time, rather than it already being in the
+index when the demo starts.
 
 Start the API:
 
@@ -111,61 +124,94 @@ whatever email you put in `PARTNER_EMAILS` to get partner access (the
    precedents highlighted — this is the onboarding/continuity pillar made
    concrete: a new joiner doesn't need to already know where to look.
 3. **Library tab** — show the corpus is genuinely messy (open a couple of
-   the raw `.txt` files in `backend/demo_corpus/` first if you want the
-   judges to see the "before"). Click **Ingest**, watch each file get read
-   and auto-tagged live, with no manual sorting. Then use the practice
-   area / jurisdiction / matter type / document type filters (plus the
-   free-text box) to show browsing the corpus by facet, not just a flat
-   list.
-4. **Search & Draft tab, document mode** — run a query in plain English,
-   e.g. *"cap on a shareholder's liability if they breach the agreement"*
-   — this should surface the Alpha Robotics shareholders' agreements even
-   though the query never says "indemnity" or "SHA".
-5. Point out the **rejected** section: the outdated v1/v2 drafts get
-   flagged with a plain-English reason (superseded, not partner-approved),
-   not just silently dropped.
+   the raw files in `case_documents/` first if you want the judges to see
+   the "before" — a redlined `.docx` with visible strikethrough/underline
+   mark-up and a printed-email `.pdf` on firm letterhead both make the
+   point better than a plain `.txt` would). The corpus is already indexed
+   via the seed script; use the practice area / jurisdiction / matter type
+   / document type filters (plus the free-text box) to show browsing it by
+   facet, not just a flat list of 30 files. Live ingestion itself gets its
+   own dedicated moment in step 10.
+4. **Search & Draft tab, document mode** — run the query
+   `case_documents/README.md` was itself built around: *"Draft a legal
+   argument in IRAC for a request for specific production under the Rules
+   of Court 2021."* This should surface the specific-production
+   submissions from **both** litigation matters (Meridian Robotics v
+   Vantage Components; Harborview Shipping v Straits Bunker Supplies) —
+   even though the query never names either party — and should **not**
+   surface anything from the three transactional matters, nor the
+   same-matter noise documents (the unrelated charterparty redline, the
+   unrelated draft supply agreement with a replacement vendor).
+5. Point out the **rejected** section: each litigation matter's
+   `03_draft_submission...` — circulated for partner review, still under
+   mark-up, not yet filed — gets flagged with a plain-English reason
+   (superseded by the later, partner-approved `04_final_submission...`)
+   instead of silently dropped. This is a genuinely harder draft-vs-final
+   call than a document that just says "DRAFT" at the top, since the
+   draft's substance is largely the same text before the partner's edits.
 6. **Switch to clause mode** (toggle at the top of the search panel) and
-   run something narrower, e.g. *"cap on indemnity liability"* — instead
-   of ranking whole documents, this returns the exact clause, labeled and
-   quoted, with a similarity score and a link back to its source document.
-   This is the difference between "here's a 40-page agreement that's
-   probably relevant" and "here's the paragraph you need."
-7. **Matters tab** (partner account) — wall the Alpha Robotics matter,
-   naming only a couple of allowed emails. Sign in as a different, unlisted
-   account in a private window and re-run the same search (document or
-   clause mode — both respect the wall) — the walled matter's documents
-   disappear from search/library/lineage entirely and show up as "access
-   restricted" instead. This is the ethical-wall / access-control pillar
-   made real: it's tied to a verified login, not a toggle in the UI, and
-   it's set per-matter by a partner, not inferred from a document.
-8. Back on the partner account: select the top precedent(s), hit
-   **Generate draft**, and click a citation badge in the draft — it
-   scrolls to and highlights the exact source document above. This is the
-   trust-building centerpiece: nothing in the draft is ungrounded, and
-   anything the sources didn't cover shows up as a flagged gap instead of
-   an invented clause.
+   run something narrower, e.g. *"the threshold for specific production
+   under Order 11 Rule 3"* — instead of ranking whole documents, this
+   returns the exact paragraph, labeled and quoted, with a similarity
+   score and a link back to its source document. This is the difference
+   between "here's a 15-page submission that's probably relevant" and
+   "here's the paragraph you need."
+7. **Library tab → Matters view** (partner account) — wall the Meridian
+   Robotics v Vantage Components matter, naming only a couple of allowed
+   emails. Sign in as a different, unlisted account in a private window and
+   re-run the
+   same search (document or clause mode — both respect the wall) — the
+   walled matter's documents disappear from search/library/lineage
+   entirely and show up as "access restricted" instead. This is the
+   ethical-wall / access-control pillar made real: it's tied to a verified
+   login, not a toggle in the UI, and it's set per-matter by a partner, not
+   inferred from a document.
+8. Back on the partner account: select the two final specific-production
+   submissions, hit **Generate draft** for a similar application, and
+   click a citation badge in the draft — it scrolls to and highlights the
+   exact source document above. This is the trust-building centerpiece:
+   nothing in the draft is ungrounded, and anything the sources didn't
+   cover shows up as a flagged gap instead of an invented clause.
 9. Adjust a ranking weight slider (e.g. push "partner approval" up) and
    re-run the search to show a lawyer can tune what "best" means, live.
-10. **Automatic conflict detection** — ingest a document whose
-    `counterparty_name` matches an existing client (or vice versa) — e.g.
-    a plain-text file naming "Alpha Robotics" as the counterparty to a new
-    client. The ingest result flags it immediately with a plain-English
-    reason, and it shows up on the **Matters tab** as a highlighted row a
-    partner can acknowledge. Nothing gets walled automatically — a
-    partner still makes the call.
+10. **Automatic conflict detection** — in the Library tab, click
+    **Ingest** and pick `backend/live_ingest_demo
+    /new_client_intake_vantage_components.txt`: a new-client intake memo
+    for "Vantage Components Pte Ltd" — the same company already on record
+    as the *counterparty* being sued in the Meridian Robotics matter. Its
+    own intake memo says the manual conflict check came up clean (searched
+    for "Vantage Components", found nothing — a plausible miss, since nothing
+    in a name search would connect it to a suit filed under "Meridian
+    Robotics v Vantage Components"). The automatic check has no such blind
+    spot: it compares the new document's `client_name` against every other
+    matter's `client_name`/`counterparty_name` directly, flags the match
+    immediately in the ingest result with a plain-English reason, and it
+    shows up in the **Matters view** (still on the Library tab) as a
+    highlighted row for a partner to acknowledge — switching there after the
+    ingest shows it immediately, no separate tab or manual refresh needed.
+    Nothing gets walled automatically — a partner still makes the call.
 11. **Delete a document** (partner account) — in the Library tab, delete
-    a single mis-ingested document instead of wiping the whole index.
-    Sign in as a non-partner and confirm the Delete button isn't there at
-    all.
+    one of the same-matter noise documents (e.g. the unrelated
+    charterparty redline in the Harborview Shipping matter) instead of
+    wiping the whole index. Sign in as a non-partner and confirm the
+    Delete button isn't there at all.
 
 ## How it works
 
 - **Ingestion** (`backend/app/ingestion.py`): extracts text from
   `.txt` / `.docx` / `.pdf`, then asks the LLM to fill in a structured
-  metadata schema (matter type, practice area, jurisdiction, industry,
-  client type, transaction value, date, responsible lawyer, counterparty
-  type, document type, completed/executed/draft-or-model status, version,
-  partner approval, confidentiality, and a plain-English description).
+  metadata schema (matter reference number if the document states one,
+  matter type, practice area, jurisdiction, industry, client type,
+  transaction value, date, responsible lawyer, counterparty type, document
+  type, completed/executed/draft-or-model status, version, partner
+  approval, confidentiality, and a plain-English description).
+  `.docx` extraction deliberately skips struck-through runs: real redlines
+  are usually manual strikethrough/underline character formatting rather
+  than actual Word tracked-changes XML, so a naive paragraph-text read
+  concatenates the "deleted" and "inserted" text back-to-back with no
+  separator (e.g. "12 weeks10 weeks") — dropping the struck-through half
+  recovers the clean, current reading instead of feeding garbled text to
+  both the metadata LLM and the embeddings.
 - **Search** (`backend/app/search.py`): semantic search via Postgres +
   pgvector (OpenAI embeddings), then a transparent weighted score across
   similarity / recency / firm usage frequency / partner approval /
@@ -186,12 +232,20 @@ whatever email you put in `PARTNER_EMAILS` to get partner access (the
   actually works at a firm (default access is open; a wall is the
   exception, applied to a specific matter by a partner, e.g. because of an
   adverse-client conflict). A "matter" is the same cluster key
-  (`client_name` + `counterparty_name` + `matter_type` + `jurisdiction`)
-  the search-ranking and lineage-graph logic already group documents by.
-  Walling a matter sets an allow-list of emails; everyone else is blocked
-  from that matter's documents in search, the library, lineage, and
-  drafting alike — see `matters.is_blocked()`, the single check every one
-  of those code paths goes through.
+  (`matters.cluster_key`) the search-ranking and lineage-graph logic
+  already group documents by: the explicit matter/case reference number a
+  document cites (e.g. "HC/S 214/2026"), when it cites one, since a real
+  case file mixes document types (correspondence, billing, drafts, a final
+  version, internal memos) that the metadata LLM can reasonably tag with
+  different matter_type/practice_area guesses despite being unambiguously
+  the same file — an explicit reference number is a stronger, type-agnostic
+  signal than any inferred combination of fields. Falls back to the
+  *unordered set* of `client_name` + `counterparty_name` plus `matter_type`
+  + `jurisdiction` when no reference is stated. Walling a matter sets an
+  allow-list of emails; everyone else is blocked from that matter's
+  documents in search, the library, lineage, and drafting alike — see
+  `matters.is_blocked()`, the single check every one of those code paths
+  goes through.
 - **Drafting** (`backend/app/drafting.py`): the LLM drafts strictly from
   the selected source documents, inserting a `[[n]]` citation marker after
   every clause it draws on, and a `[[GAP: ...]]` marker instead of
@@ -231,8 +285,8 @@ whatever email you put in `PARTNER_EMAILS` to get partner access (the
   features would defeat each other) and deliberately never auto-applies a
   wall — a flag surfaces on the Matters page (`matter_conflict_flags`
   table) for a partner to review and acknowledge. First-pass name matching
-  only, same limitation as matter clustering: "Alpha Robotics Pte Ltd" and
-  "Alpha Robotics" won't be recognized as the same company.
+  only, same limitation as matter clustering: "Vantage Components Pte Ltd"
+  and "Vantage Components" won't be recognized as the same company.
 - **Document deletion** (`DELETE /api/documents/{doc_id}`): removing a
   single wrongly-ingested or genuinely obsolete document used to mean
   wiping the entire index — this is the actual fix. Partner-gated like
@@ -269,12 +323,14 @@ are easy to miss and will produce a blank page or 401s if skipped:
 
 ## Extending this in the time you have left
 
-- **More corpus**: drop more files into `backend/demo_corpus/` and re-run
-  the seed script — the brief calls for 20–50 documents in the live demo.
+- **More corpus**: drop more files into `case_documents/` (any client
+  subfolder, or a new one) and re-run the seed script — currently 30
+  documents, comfortably within the brief's 20–50 range, but more matters
+  means richer clustering/lineage/conflict demos.
 - **Conflict detection beyond exact-name matching**: today's check
   (`backend/app/conflicts.py`) is case-insensitive exact matching only —
-  fuzzy/alias matching (e.g. "Alpha Robotics" vs "Alpha Robotics Pte Ltd")
-  would catch more real conflicts.
+  fuzzy/alias matching (e.g. "Vantage Components" vs "Vantage Components
+  Pte Ltd") would catch more real conflicts.
 - **Partner roles beyond an env var**: `PARTNER_EMAILS` in `backend/app/
   config.py` is a static allowlist — fine for a demo, but a real version
   would be a role stored per-user (e.g. in Supabase) with an admin screen

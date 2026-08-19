@@ -181,6 +181,11 @@ export default function DocumentLibrary({ refreshKey, onChanged, onPreview, isPa
                     <div className="mono" style={{ color: "var(--text-muted)" }}>{d.doc_id}</div>
                   </td>
                   <td style={{ fontSize: 12.5 }}>
+                    {d.metadata.matter_reference && (
+                      <div className="mono" style={{ color: "var(--text-muted)", fontSize: 11 }}>
+                        {d.metadata.matter_reference}
+                      </div>
+                    )}
                     {d.metadata.matter_type || "—"}
                     <div style={{ color: "var(--text-muted)" }}>{d.metadata.practice_area || ""}</div>
                   </td>
