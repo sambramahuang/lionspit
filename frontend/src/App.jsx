@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import { supabase, supabaseConfigError } from "./supabaseClient.js";
 import Auth from "./components/Auth.jsx";
@@ -11,6 +11,7 @@ import LineageGraph from "./components/LineageGraph.jsx";
 import SearchPage from "./components/SearchPage.jsx";
 import PreviewModal from "./components/PreviewModal.jsx";
 import SlicedWaves from "./components/SlicedWaves/SlicedWaves.jsx";
+import GradientMotionBackground from "./components/GradientMotionBackground.jsx";
 import Dock from "./components/Dock/Dock.jsx";
 import TiltedCard from "./components/TiltedCard/TiltedCard.jsx";
 import { useDocumentPreview } from "./hooks/useDocumentPreview.js";
@@ -77,6 +78,18 @@ export default function App() {
   const [docCount, setDocCount] = useState(0);
   const preview = useDocumentPreview();
 
+  // Same lag-behind-the-source-of-truth pattern as displayedTab/wipePhase
+  // above, applied to the Auth -> app-shell boundary: displayedAuthed only
+  // flips once the wipe has fully covered the screen, so the swap from the
+  // login card to the dashboard happens hidden underneath the sweep instead
+  // of as a jarring instant cut. wasAuthedRef (not state) tracks whether we
+  // were already signed in, so a token refresh or an already-authenticated
+  // page reload doesn't replay the entrance animation -- only an actual
+  // sign-in transition (false -> true) does.
+  const [displayedAuthed, setDisplayedAuthed] = useState(false);
+  const [authWipePhase, setAuthWipePhase] = useState(null); // null | "covering" | "revealing"
+  const wasAuthedRef = useRef(false);
+
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
 
   const changeTab = (next) => {
@@ -90,8 +103,27 @@ export default function App() {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
+    const applySession = (sess) => {
+      setSession(sess);
+      const authed = !!sess;
+      if (authed && !wasAuthedRef.current) {
+        if (prefersReducedMotion) {
+          setDisplayedAuthed(true);
+        } else {
+          setAuthWipePhase("covering");
+        }
+      } else if (!authed) {
+        setDisplayedAuthed(false);
+        setAuthWipePhase(null);
+      }
+      wasAuthedRef.current = authed;
+    };
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setDisplayedAuthed(!!data.session); // no animation for an already-authenticated page load
+      wasAuthedRef.current = !!data.session;
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => applySession(sess));
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -122,34 +154,49 @@ export default function App() {
   }
 
   if (session === undefined) return <p className="spinner-text">Loading...</p>;
-  if (!session) return <Auth />;
+
+  if (!displayedAuthed) {
+    return (
+      <>
+        <Auth />
+        {authWipePhase && (
+          <PageWipe
+            phase={authWipePhase}
+            onCoverComplete={() => {
+              setDisplayedAuthed(true);
+              setAuthWipePhase("revealing");
+            }}
+            onRevealComplete={() => setAuthWipePhase(null)}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <div className="app-shell">
+      {authWipePhase === "revealing" && (
+        <PageWipe phase="revealing" onRevealComplete={() => setAuthWipePhase(null)} />
+      )}
       <div className="app-bg">
-        <SlicedWaves
-          color1="#c79a55"
-          color2="#1b2430"
-          color3="#a9752f"
-          columns={14}
-          rows={8}
-          barThickness={0.08}
-          speed={0.25}
-          travel={0.7}
-          waveSpread={0.9}
-          rowOffset={1.0}
-          softness={0.12}
-          glow={0}
-          brightness={1.0}
-          contrast={1.0}
-          opacity={0.13}
-          orientation="horizontal"
-          alternate={false}
-          mouseInteraction={true}
-          mouseStrength={1}
-          mouseRadius={0.3}
-          grain={true}
-          grainIntensity={0.05}
+        <GradientMotionBackground
+          colorStops={["#c79a55", "#a9752f", "#e0b878"]}
+          baseBackground="transparent"
+          blendMode="soft-light"
+          opacity={55}
+          contrast={110}
+          shapeStyle="Blob"
+          blobCount={3}
+          blurAmount={140}
+          sizeMin={55}
+          sizeMax={85}
+          animate={true}
+          speed={40}
+          motionStyle="Drift"
+          motionRange={60}
+          randomDirection={true}
+          easeType="ease-in-out"
+          seed={7}
         />
       </div>
 
