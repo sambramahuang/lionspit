@@ -4,12 +4,13 @@ tagging required -- this is the "low-effort capture" pillar. We extract
 text per file type, then hand it to the LLM with a strict JSON schema
 prompt to auto-populate the metadata fields called for in the brief.
 """
+
 import io
 import re
 import uuid
 
-from pypdf import PdfReader
 from docx import Document as DocxDocument
+from pypdf import PdfReader
 
 from app.llm_client import call_llm_json
 from app.models import DocumentMetadata
@@ -36,7 +37,8 @@ exactly these keys:
   "document_date": string or null (YYYY-MM-DD if determinable, else the raw date text),
   "responsible_lawyer": string or null,
   "counterparty_type": string or null,
-  "document_type": string or null,
+    "document_type": one of "Cases / Judgments", "Legislation", "Regulations", "Contracts / Agreements", "Legal opinions", "Pleadings", "Firm precedents", "Other", or null,
+    "status": one of "In force", "Repealed", "Amending/ overruled", or null,
   "matter_completed": boolean or null,
   "document_executed": boolean or null,
   "is_draft_or_model": one of "draft", "model", "executed", "unknown",
@@ -84,10 +86,10 @@ _CLAUSE_HEADER_RE = re.compile(
     re.MULTILINE | re.IGNORECASE,
 )
 
-_MIN_CLAUSE_MARKERS = 3      # below this, the doc isn't reliably clause-numbered
-_MAX_CLAUSES_PER_DOC = 60    # bound embedding calls on pathological input
-_TARGET_WORDS = 220          # fallback paragraph-merge target size
-_MAX_FALLBACK_WORDS = 500    # split any single paragraph longer than this
+_MIN_CLAUSE_MARKERS = 3  # below this, the doc isn't reliably clause-numbered
+_MAX_CLAUSES_PER_DOC = 60  # bound embedding calls on pathological input
+_TARGET_WORDS = 220  # fallback paragraph-merge target size
+_MAX_FALLBACK_WORDS = 500  # split any single paragraph longer than this
 
 
 def _label_for(chunk: str) -> str:
@@ -117,7 +119,7 @@ def _merge_and_cap_paragraphs(paragraphs: list[str]) -> list[str]:
             flush()
             buffer, buffer_words = [], 0
             for i in range(0, len(words), _MAX_FALLBACK_WORDS):
-                chunks.append(" ".join(words[i:i + _MAX_FALLBACK_WORDS]))
+                chunks.append(" ".join(words[i : i + _MAX_FALLBACK_WORDS]))
             continue
 
         buffer.append(p)
@@ -155,7 +157,11 @@ def split_into_clauses(text: str) -> list[dict]:
                 raw_chunks.append(chunk)
     else:
         paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
-        raw_chunks = _merge_and_cap_paragraphs(paragraphs) if paragraphs else ([text.strip()] if text.strip() else [])
+        raw_chunks = (
+            _merge_and_cap_paragraphs(paragraphs)
+            if paragraphs
+            else ([text.strip()] if text.strip() else [])
+        )
 
     if len(raw_chunks) > _MAX_CLAUSES_PER_DOC:
         # Merge down to the cap by combining adjacent chunks evenly rather
@@ -163,7 +169,7 @@ def split_into_clauses(text: str) -> list[dict]:
         # just at coarser granularity.
         factor = -(-len(raw_chunks) // _MAX_CLAUSES_PER_DOC)  # ceil div
         raw_chunks = [
-            "\n\n".join(raw_chunks[i:i + factor])
+            "\n\n".join(raw_chunks[i : i + factor])
             for i in range(0, len(raw_chunks), factor)
         ]
 

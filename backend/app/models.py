@@ -4,7 +4,7 @@ it easy to see the whole data model at a glance -- which matters here,
 since the metadata schema below IS the product (it's the structured
 "knowhow" the rest of the system is built on).
 """
-from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -15,25 +15,27 @@ class DocumentMetadata(BaseModel):
     yield a clean answer -- an empty field is more honest than a guess,
     and the UI should show "not detected" rather than fabricate one.
     """
-    client_name: Optional[str] = None
-    counterparty_name: Optional[str] = None
-    matter_type: Optional[str] = None
-    practice_area: Optional[str] = None
-    jurisdiction: Optional[str] = None
-    industry: Optional[str] = None
-    client_type: Optional[str] = None
-    transaction_value: Optional[str] = None
-    document_date: Optional[str] = None
-    responsible_lawyer: Optional[str] = None
-    counterparty_type: Optional[str] = None
-    document_type: Optional[str] = None
-    matter_completed: Optional[bool] = None
-    document_executed: Optional[bool] = None
-    is_draft_or_model: Optional[str] = None  # "draft" | "model" | "executed" | "unknown"
-    version: Optional[str] = None
-    partner_approved: Optional[bool] = None
-    short_description: Optional[str] = None
-    confidentiality: Optional[str] = "internal"  # "public" | "internal" | "restricted"
+
+    client_name: str | None = None
+    counterparty_name: str | None = None
+    matter_type: str | None = None
+    practice_area: str | None = None
+    jurisdiction: str | None = None
+    industry: str | None = None
+    client_type: str | None = None
+    transaction_value: str | None = None
+    document_date: str | None = None
+    responsible_lawyer: str | None = None
+    counterparty_type: str | None = None
+    document_type: str | None = None
+    status: str | None = None  # "In force" | "Repealed" | "Amending/ overruled"
+    matter_completed: bool | None = None
+    document_executed: bool | None = None
+    is_draft_or_model: str | None = None  # "draft" | "model" | "executed" | "unknown"
+    version: str | None = None
+    partner_approved: bool | None = None
+    short_description: str | None = None
+    confidentiality: str | None = "internal"  # "public" | "internal" | "restricted"
 
 
 class DocumentRecord(BaseModel):
@@ -49,7 +51,7 @@ class IngestResult(BaseModel):
     filename: str
     metadata: DocumentMetadata
     status: str  # "ingested" | "error"
-    error: Optional[str] = None
+    error: str | None = None
     conflict_warnings: list[str] = Field(default_factory=list)
 
 
@@ -63,8 +65,11 @@ class RankingWeights(BaseModel):
 
 class SearchRequest(BaseModel):
     query: str
-    jurisdiction_filter: Optional[str] = None
-    matter_type_filter: Optional[str] = None
+    jurisdiction_filter: str | None = None
+    matter_type_filter: str | None = None
+    recency_filter: str | None = None
+    status_filters: list[str] = Field(default_factory=list)
+    document_type_filters: list[str] = Field(default_factory=list)
     weights: RankingWeights = Field(default_factory=RankingWeights)
     candidate_pool: int = 8
     keep_top: int = 2
@@ -77,7 +82,7 @@ class SearchResultItem(BaseModel):
     score: float
     score_breakdown: dict
     similarity: float
-    llm_relevance_reason: Optional[str] = None
+    llm_relevance_reason: str | None = None
 
 
 class RejectedItem(BaseModel):
@@ -90,10 +95,16 @@ class RejectedItem(BaseModel):
 class SearchResponse(BaseModel):
     query: str
     candidates_considered: int
-    kept: list[SearchResultItem]           # the strongest precedents, selected for drafting
-    other_candidates: list[SearchResultItem]  # surfaced but not selected -- browsable/filterable
-    rejected: list[RejectedItem]            # outdated / superseded / not partner-approved, with reasons
-    access_restricted: list[RejectedItem]   # blocked by a matter-level ethical wall, not content
+    kept: list[SearchResultItem]  # the strongest precedents, selected for drafting
+    other_candidates: list[
+        SearchResultItem
+    ]  # surfaced but not selected -- browsable/filterable
+    rejected: list[
+        RejectedItem
+    ]  # outdated / superseded / not partner-approved, with reasons
+    access_restricted: list[
+        RejectedItem
+    ]  # blocked by a matter-level ethical wall, not content
 
 
 class ClauseSearchRequest(BaseModel):
@@ -106,7 +117,7 @@ class ClauseResult(BaseModel):
     doc_id: str
     filename: str
     clause_index: int
-    label: Optional[str] = None
+    label: str | None = None
     text: str
     similarity: float
     metadata: DocumentMetadata
@@ -132,8 +143,8 @@ class LineageNode(BaseModel):
 
 
 class LineageEdge(BaseModel):
-    from_doc_id: str    # the older / superseded document
-    to_doc_id: str       # the current document it points to
+    from_doc_id: str  # the older / superseded document
+    to_doc_id: str  # the current document it points to
     reason: str
 
 
@@ -147,7 +158,9 @@ class LineageCluster(BaseModel):
 
 class LineageResponse(BaseModel):
     clusters: list[LineageCluster]
-    standalone: list[LineageNode]  # documents with no other version in their matter cluster
+    standalone: list[
+        LineageNode
+    ]  # documents with no other version in their matter cluster
 
 
 class MeResponse(BaseModel):
@@ -159,8 +172,8 @@ class MatterWallInfo(BaseModel):
     matter_key: str
     walled: bool = False
     allowed_emails: list[str] = Field(default_factory=list)
-    updated_by: Optional[str] = None
-    updated_at: Optional[str] = None
+    updated_by: str | None = None
+    updated_at: str | None = None
 
 
 class MatterWallRequest(BaseModel):
@@ -171,11 +184,11 @@ class MatterWallRequest(BaseModel):
 class ConflictFlag(BaseModel):
     matter_key: str
     reason: str
-    flagged_doc_id: Optional[str] = None
-    detected_at: Optional[str] = None
+    flagged_doc_id: str | None = None
+    detected_at: str | None = None
     acknowledged: bool = False
-    acknowledged_by: Optional[str] = None
-    acknowledged_at: Optional[str] = None
+    acknowledged_by: str | None = None
+    acknowledged_at: str | None = None
 
 
 class MatterSummary(BaseModel):
@@ -183,23 +196,23 @@ class MatterSummary(BaseModel):
     label: str
     document_count: int
     wall: MatterWallInfo
-    conflict: Optional[ConflictFlag] = None
+    conflict: ConflictFlag | None = None
 
 
 class DraftRequest(BaseModel):
     query: str
     doc_ids: list[str]
-    instructions: Optional[str] = None
+    instructions: str | None = None
 
 
 class Citation(BaseModel):
-    marker: str        # e.g. "1"
+    marker: str  # e.g. "1"
     doc_id: str
     filename: str
-    excerpt: str        # short quoted/paraphrased snippet the draft grounded on
+    excerpt: str  # short quoted/paraphrased snippet the draft grounded on
 
 
 class DraftResponse(BaseModel):
-    draft_text: str     # contains inline [[n]] markers matching citations
+    draft_text: str  # contains inline [[n]] markers matching citations
     citations: list[Citation]
-    gaps: list[str]      # things the sources didn't cover, flagged instead of invented
+    gaps: list[str]  # things the sources didn't cover, flagged instead of invented

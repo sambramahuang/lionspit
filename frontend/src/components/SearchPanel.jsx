@@ -2,22 +2,38 @@ import React from "react";
 
 const WEIGHT_LABELS = {
   similarity: "Similarity to query",
-  recency: "Recency",
   frequency: "Firm usage frequency",
   partner_approval: "Partner approval",
   jurisdiction_match: "Jurisdiction match",
 };
 
+const RECENCY_OPTIONS = [
+  ["30d", "Past 30 days"], ["6m", "Past 6 months"], ["1y", "Past 1 year"],
+  ["3y", "Past 3 years"], ["5y", "Past 5 years"],
+];
+const STATUS_OPTIONS = ["In force", "Repealed", "Amending/ overruled"];
+const DOCUMENT_TYPE_OPTIONS = [
+  "Cases / Judgments", "Legislation", "Regulations", "Contracts / Agreements",
+  "Legal opinions", "Pleadings", "Firm precedents", "Other",
+];
+
 export default function SearchPanel({
   query, setQuery,
   jurisdictionFilter, setJurisdictionFilter,
   matterTypeFilter, setMatterTypeFilter,
+  recencyFilter, setRecencyFilter,
+  statusFilters, setStatusFilters,
+  documentTypeFilters, setDocumentTypeFilters,
   weights, setWeights,
   mode, setMode,
   onSearch, busy,
 }) {
   const updateWeight = (key, value) => {
     setWeights((prev) => ({ ...prev, [key]: parseFloat(value) }));
+  };
+
+  const toggleFilter = (setter, value) => {
+    setter((prev) => prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]);
   };
 
   return (
@@ -77,9 +93,33 @@ export default function SearchPanel({
             />
           </div>
 
-          <div className="section-label" style={{ margin: "18px 0 4px" }}>Ranking weights</div>
+          <div className="section-label" style={{ margin: "18px 0 4px", fontSize: 16 , color:"black"}}>Customize weights</div>
+          
+          <div className="filter-checklists">
+            <fieldset className="filter-checklist">
+              <legend>Recency</legend>
+              {RECENCY_OPTIONS.map(([value, label]) => (
+                <label key={value}><input type="radio" name="recency" checked={recencyFilter === value} onChange={() => setRecencyFilter(value)} />{label}</label>
+              ))}
+              <label><input type="radio" name="recency" checked={!recencyFilter} onChange={() => setRecencyFilter("")} />Any time</label>
+            </fieldset>
+            <fieldset className="filter-checklist">
+              <legend>Status category</legend>
+              {STATUS_OPTIONS.map((value) => (
+                <label key={value}><input type="checkbox" checked={statusFilters.includes(value)} onChange={() => toggleFilter(setStatusFilters, value)} />{value}</label>
+              ))}
+            </fieldset>
+            <fieldset className="filter-checklist">
+              <legend>Document Type</legend>
+              {DOCUMENT_TYPE_OPTIONS.map((value) => (
+                <label key={value}><input type="checkbox" checked={documentTypeFilters.includes(value)} onChange={() => toggleFilter(setDocumentTypeFilters, value)} />{value}</label>
+              ))}
+            </fieldset>
+          </div>
+
+          
           <div className="weights-panel">
-            {Object.entries(weights).map(([key, value]) => (
+            {Object.entries(weights).filter(([key]) => key !== "recency").map(([key, value]) => (
               <div className="weight-row" key={key}>
                 <label>
                   <span>{WEIGHT_LABELS[key] || key}</span>

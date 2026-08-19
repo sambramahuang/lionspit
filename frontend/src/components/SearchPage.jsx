@@ -6,11 +6,10 @@ import ClauseResultCard from "./ClauseResultCard.jsx";
 import DraftView from "./DraftView.jsx";
 
 const DEFAULT_WEIGHTS = {
-  similarity: 0.4,
-  recency: 0.15,
-  frequency: 0.15,
-  partner_approval: 0.2,
-  jurisdiction_match: 0.1,
+  similarity: 0.5,
+  frequency: 0.5,
+  partner_approval: 0.5,
+  jurisdiction_match: 0.5,
 };
 
 export default function SearchPage({ onPreview }) {
@@ -18,6 +17,22 @@ export default function SearchPage({ onPreview }) {
   const [query, setQuery] = useState("");
   const [jurisdictionFilter, setJurisdictionFilter] = useState("");
   const [matterTypeFilter, setMatterTypeFilter] = useState("");
+  const [recencyFilter, setRecencyFilter] = useState("");
+  const [statusFilters, setStatusFilters] = useState([
+    "In force",
+    "Repealed",
+    "Amending/ overruled",
+  ]);
+  const [documentTypeFilters, setDocumentTypeFilters] = useState([
+    "Cases / Judgments",
+    "Legislation",
+    "Regulations",
+    "Contracts / Agreements",
+    "Legal opinions",
+    "Pleadings",
+    "Firm precedents",
+    "Other",
+  ]);
   const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
 
   const [busy, setBusy] = useState(false);
@@ -51,6 +66,9 @@ export default function SearchPage({ onPreview }) {
           query,
           jurisdiction_filter: jurisdictionFilter || null,
           matter_type_filter: matterTypeFilter || null,
+          recency_filter: recencyFilter || null,
+          status_filters: statusFilters,
+          document_type_filters: documentTypeFilters,
           weights,
         });
         setResult(res);
@@ -98,6 +116,9 @@ export default function SearchPage({ onPreview }) {
         query={query} setQuery={setQuery}
         jurisdictionFilter={jurisdictionFilter} setJurisdictionFilter={setJurisdictionFilter}
         matterTypeFilter={matterTypeFilter} setMatterTypeFilter={setMatterTypeFilter}
+        recencyFilter={recencyFilter} setRecencyFilter={setRecencyFilter}
+        statusFilters={statusFilters} setStatusFilters={setStatusFilters}
+        documentTypeFilters={documentTypeFilters} setDocumentTypeFilters={setDocumentTypeFilters}
         weights={weights} setWeights={setWeights}
         mode={mode} setMode={switchMode}
         onSearch={runSearch} busy={busy}
