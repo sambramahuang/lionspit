@@ -39,6 +39,16 @@ function StartHereIcon() {
   );
 }
 
+function HomeIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <path d="M3 11.5 12 4l9 7.5" />
+      <path d="M5.5 10v9h13v-9" />
+      <path d="M9.5 19v-5h5v5" />
+    </svg>
+  );
+}
+
 function LibraryIcon() {
   return (
     <svg {...ICON_PROPS}>
@@ -57,6 +67,7 @@ function SearchIcon() {
 }
 
 const TAB_ITEMS = [
+  { key: "home", label: "Home", icon: <HomeIcon /> },
   { key: "start", label: "Start Here", icon: <StartHereIcon /> },
   { key: "library", label: "Library", icon: <LibraryIcon /> },
   { key: "search", label: "Search & Draft", icon: <SearchIcon /> },
@@ -66,12 +77,13 @@ const TAB_ITEMS = [
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = checking, null = signed out
   const [me, setMe] = useState(null);
-  const [tab, setTab] = useState("start");
+  const [tab, setTab] = useState("home");
   // What's actually rendered -- lags behind `tab` during a wipe so the
   // content swap happens while the panel fully covers the screen, not
   // visibly mid-transition. Equal to `tab` outside of a transition.
-  const [displayedTab, setDisplayedTab] = useState("start");
+  const [displayedTab, setDisplayedTab] = useState("home");
   const [wipePhase, setWipePhase] = useState(null); // null | "covering" | "revealing"
+  const [wipeDirection, setWipeDirection] = useState("right");
   const [libraryView, setLibraryView] = useState("list");
   const [refreshKey, setRefreshKey] = useState(0);
   const [apiUp, setApiUp] = useState(null);
@@ -94,6 +106,9 @@ export default function App() {
 
   const changeTab = (next) => {
     if (next === tab || wipePhase) return; // ignore repeats and mid-transition clicks
+    const currentIndex = TAB_ITEMS.findIndex((item) => item.key === tab);
+    const nextIndex = TAB_ITEMS.findIndex((item) => item.key === next);
+    setWipeDirection(nextIndex > currentIndex ? "right" : "left");
     setTab(next);
     if (prefersReducedMotion) {
       setDisplayedTab(next);
@@ -162,6 +177,8 @@ export default function App() {
         {authWipePhase && (
           <PageWipe
             phase={authWipePhase}
+            axis="y"
+            direction="down"
             onCoverComplete={() => {
               setDisplayedAuthed(true);
               setAuthWipePhase("revealing");
@@ -223,10 +240,14 @@ export default function App() {
       </header>
 
       <main className="content">
-        {displayedTab === "start" && <HeroView onExplore={() => changeTab("overview")} />}
+        {displayedTab === "home" && <HeroView onExplore={() => changeTab("start")} />}
 
-        {displayedTab === "overview" && (
-          <OverviewView onPreview={preview.openPreview} onGoToSearch={() => changeTab("search")} />
+        {displayedTab === "start" && (
+          <OverviewView
+            onPreview={preview.openPreview}
+            onGoToLibrary={() => changeTab("library")}
+            onGoToSearch={() => changeTab("search")}
+          />
         )}
 
         {displayedTab === "library" && (
@@ -286,6 +307,7 @@ export default function App() {
       {wipePhase && (
         <PageWipe
           phase={wipePhase}
+          direction={wipeDirection}
           onCoverComplete={() => {
             setDisplayedTab(tab);
             setWipePhase("revealing");

@@ -1,15 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
 
-// Interactive hexagon-grid background, in the app's own ink/brass palette:
+// Interactive hexagon-grid background in the app's neutral and navy palette:
 // a flat-top hex tiling drawn once per size change, each cell lighting up
-// with a brass glow the closer the pointer sits to its center. No canvas --
+// with a unified navy or neutral glow the closer the pointer sits to its center. No canvas --
 // plain absolutely-positioned clip-path divs, since the grid is static
 // geometry and only the per-cell glow needs to update on pointer move.
 const HEX_SIZE = 46; // center-to-corner radius, px
 const HEX_MARGIN = 4; // gap between cells, px
 const GLOW_RADIUS = 220; // px, how far a cell "feels" the pointer
 const HEX_OPACITY_SCALE = 0.7; // make the grid 30% more transparent
-const HEX_DEFAULT_COLOR = "#8a8f96";
+const HEX_DEFAULT_COLOR = "#b9bec3";
+const HEX_BASE_OPACITY = 0.07;
+const HEX_GLOW_OPACITY = 0.32;
 
 function buildHexagons(width, height) {
   const w = HEX_SIZE * 2;
@@ -37,6 +39,7 @@ export default function HexagonBackground({ hexagonSize = HEX_SIZE, hexagonMargi
   const [pointer, setPointer] = useState(null); // {x, y} in container-local px, or null
   const [hoverTone, setHoverTone] = useState(HEX_DEFAULT_COLOR);
   const pointerActiveRef = useRef(false);
+  const hasLeftViewportRef = useRef(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -54,8 +57,10 @@ export default function HexagonBackground({ hexagonSize = HEX_SIZE, hexagonMargi
     const trackPointer = (event) => {
       const rect = el.getBoundingClientRect();
       if (!pointerActiveRef.current) {
-        const nextTone = Math.random() < 0.5 ? HEX_DEFAULT_COLOR : "var(--ink)";
-        setHoverTone(nextTone);
+        if (hasLeftViewportRef.current) {
+          const nextTone = Math.random() < 0.5 ? HEX_DEFAULT_COLOR : "var(--ink)";
+          setHoverTone(nextTone);
+        }
         pointerActiveRef.current = true;
       }
       setPointer({ x: event.clientX - rect.left, y: event.clientY - rect.top });
@@ -64,6 +69,7 @@ export default function HexagonBackground({ hexagonSize = HEX_SIZE, hexagonMargi
       if (!event.relatedTarget) {
         setPointer(null);
         pointerActiveRef.current = false;
+        hasLeftViewportRef.current = true;
         setHoverTone(HEX_DEFAULT_COLOR);
       }
     };
@@ -101,7 +107,7 @@ export default function HexagonBackground({ hexagonSize = HEX_SIZE, hexagonMargi
               height: Math.sqrt(3) * hexagonSize,
               margin: hexagonMargin,
               background: pointer ? hoverTone : HEX_DEFAULT_COLOR,
-              opacity: (0.08 + glow * 0.55) * HEX_OPACITY_SCALE,
+              opacity: (HEX_BASE_OPACITY + glow * HEX_GLOW_OPACITY) * HEX_OPACITY_SCALE,
               transform: `scale(${1 + glow * 0.06})`,
             }}
           />

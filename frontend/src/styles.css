@@ -1,8 +1,8 @@
 /* ---------------------------------------------------------------------
    Design tokens
    A law-office register, not a startup one: ink navy chrome, cool paper
-   content, a brass accent standing in for "partner sign-off". The
-   signature element is the citation margin -- a thin brass rule that
+  content, with navy carrying the interface accent throughout. The
+  signature element is the citation margin -- a thin navy rule that
    turns every card into something that reads like an annotated
    document, and the numbered citation badges in the draft view that
    tie back to it.
@@ -20,10 +20,7 @@
   --on-ink: #f4f2ec;
   --on-ink-muted: #a9b2c0;
 
-  --brass: #a9752f;
-  --brass-dark: #8a5f22;
-  --brass-soft: #c79a55;
-  --brass-bg: #f3e9d8;
+  --accent-bg: #e8ebef;
 
   --flag-red: #a8453a;
   --flag-red-bg: #f7e9e7;
@@ -75,9 +72,9 @@ body {
 
 button, input, select, textarea { font-family: inherit; }
 
-a { color: var(--brass); }
+a { color: var(--ink); }
 
-::selection { background: var(--brass-bg); color: var(--ink); }
+::selection { background: var(--accent-bg); color: var(--ink); }
 
 ::-webkit-scrollbar { width: 11px; height: 11px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -86,10 +83,10 @@ a { color: var(--brass); }
   border-radius: 999px;
   border: 3px solid var(--paper);
 }
-::-webkit-scrollbar-thumb:hover { background: var(--brass-soft); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-softer); }
 
 :focus-visible {
-  outline: 2px solid var(--brass);
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
@@ -123,7 +120,7 @@ a { color: var(--brass); }
 
 /* Page-transition wipe (see PageWipe.jsx) -- a solid panel, not a
    crossfade, so a tab switch reads as one deliberate sweep rather than
-   ambient motion. A thin brass leading edge ties it back to the app's
+  ambient motion. A thin navy leading edge ties it back to the app's
    own citation-margin motif instead of being a plain block of color. */
 .page-wipe {
   position: fixed;
@@ -131,7 +128,7 @@ a { color: var(--brass); }
   z-index: 100;
   background: var(--ink);
   pointer-events: none;
-  box-shadow: inset -2px 0 0 var(--brass-soft);
+  box-shadow: inset -2px 0 0 var(--ink-softer);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -215,7 +212,7 @@ a { color: var(--brass); }
      (built for floating over page content) for centering on a fixed
      point, since it now sits inside a normal flex row.
    - colors swap from Dock's hardcoded dark hex values to the app's own
-     ink/brass tokens, and an .active style is added since Dock has no
+    ink tokens, and an .active style is added since Dock has no
      built-in concept of a selected item (it's a launcher, not a tab bar). */
 .dock-outer {
   position: relative;
@@ -242,7 +239,7 @@ a { color: var(--brass); }
 }
 
 /* Panel, unselected, and selected are all the same ink hue, differing
-   only in shade/opacity -- no brass or other accent color anywhere in
+  only in shade/opacity -- no warm accent color anywhere in
    the dock. The gap between the two is widened here: unselected recedes
    (more transparent, muted icon) and selected is clearly the most solid,
    opaque thing in the bar -- against a moving background, a subtle
@@ -418,9 +415,9 @@ main.content {
   background: conic-gradient(
     from var(--shine-angle, 0deg),
     transparent 0%,
-    var(--brass-soft) 10%,
-    var(--brass) 18%,
-    var(--brass-soft) 26%,
+    var(--ink-softer) 10%,
+    var(--ink) 18%,
+    var(--ink-softer) 26%,
     transparent 38%,
     transparent 100%
   );
@@ -448,8 +445,8 @@ main.content {
 }
 
 .auth-logo {
-  width: 151px;
-  height: 151px;
+  width: 181px;
+  height: 181px;
   object-fit: contain;
   border-radius: 0;
   box-shadow: none;
@@ -457,7 +454,7 @@ main.content {
 }
 
 .auth-brand-external {
-  margin-bottom: 23px;
+  margin-bottom: 14px;
   padding-bottom: 0;
   border-bottom: 0;
   color: #000;
@@ -526,8 +523,8 @@ main.content {
   }
 
   .auth-logo {
-    width: 130px;
-    height: 130px;
+    width: 156px;
+    height: 156px;
   }
 
   .auth-card {
@@ -556,7 +553,7 @@ main.content {
 .margin-card.tone-kept::before { background: var(--flag-green); }
 .margin-card.tone-rejected::before { background: var(--flag-red); }
 .margin-card.tone-restricted::before { background: var(--flag-lock); }
-.margin-card.tone-neutral::before { background: var(--brass-soft); }
+.margin-card.tone-neutral::before { background: var(--ink-softer); }
 
 /* ---------------------------------------------------------------------
    Start Here (onboarding)
@@ -585,7 +582,7 @@ main.content {
 }
 .bento-card:hover {
   box-shadow: var(--shadow-md);
-  border-color: var(--brass-soft);
+  border-color: var(--ink-softer);
   transform: translateY(-1px);
 }
 .bento-card-wide { grid-column: span 4; }
@@ -601,7 +598,7 @@ main.content {
   position: absolute;
   right: -14px;
   bottom: -16px;
-  color: var(--brass);
+  color: var(--ink);
   opacity: 0.18;
   transform: rotate(-8deg);
   pointer-events: none;
@@ -660,17 +657,17 @@ main.content {
 }
 
 .dropzone.dragover {
-  border-color: var(--brass-soft);
-  background: var(--brass-bg);
-  box-shadow: inset 0 0 0 1px var(--brass-bg);
+  border-color: var(--ink-softer);
+  background: var(--accent-bg);
+  box-shadow: inset 0 0 0 1px var(--accent-bg);
 }
 
 .dropzone:hover {
-  border-color: var(--brass-soft);
+  border-color: var(--ink-softer);
   box-shadow:
-    0 0 0 1px var(--brass-soft),
-    0 0 18px 2px rgba(169, 117, 47, 0.25),
-    0 0 40px 6px rgba(199, 154, 85, 0.18);
+    0 0 0 1px var(--ink-softer),
+    0 0 18px 2px rgba(27, 36, 48, 0.18),
+    0 0 40px 6px rgba(49, 60, 77, 0.14);
 }
 
 .dropzone-icon {
@@ -678,7 +675,7 @@ main.content {
   height: 34px;
   margin: 0 auto 12px;
   opacity: 0.55;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9752f' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V4'/%3E%3Cpath d='M7 9l5-5 5 5'/%3E%3Cpath d='M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3'/%3E%3C/svg%3E") no-repeat center / contain;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231b2430' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V4'/%3E%3Cpath d='M7 9l5-5 5 5'/%3E%3Cpath d='M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3'/%3E%3C/svg%3E") no-repeat center / contain;
 }
 
 .dropzone-title {
@@ -718,14 +715,14 @@ main.content {
   box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.btn-brass {
-  background: linear-gradient(180deg, var(--brass-soft), var(--brass));
-  color: #fff;
-  box-shadow: var(--shadow-xs), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+.btn-ink {
+  background: linear-gradient(180deg, var(--ink-soft), var(--ink));
+  color: var(--on-ink);
+  box-shadow: var(--shadow-xs), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
-.btn-brass:hover:not(:disabled) {
-  filter: brightness(1.05);
-  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+.btn-ink:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .btn-ghost {
@@ -843,8 +840,8 @@ main.content {
 
 .search-input:focus {
   outline: none;
-  border-color: var(--brass-soft);
-  box-shadow: 0 0 0 4px var(--brass-bg);
+  border-color: var(--ink-softer);
+  box-shadow: 0 0 0 4px var(--accent-bg);
 }
 
 .filter-checklists {
@@ -881,7 +878,7 @@ main.content {
   line-height: 1.3;
 }
 
-.filter-checklist input { margin: 2px 0 0; accent-color: var(--brass); }
+.filter-checklist input { margin: 2px 0 0; accent-color: var(--ink); }
 
 @media (max-width: 760px) {
   .filter-checklists { grid-template-columns: 1fr; }
@@ -907,8 +904,8 @@ main.content {
 
 .filter-input:focus {
   outline: none;
-  border-color: var(--brass-soft);
-  box-shadow: 0 0 0 3px var(--brass-bg);
+  border-color: var(--ink-softer);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 .weights-panel {
@@ -928,13 +925,13 @@ main.content {
 
 .weight-row .weight-value {
   font-family: var(--font-mono);
-  color: var(--brass);
+  color: var(--ink);
   font-weight: 500;
 }
 
 input[type="range"] {
   width: 100%;
-  accent-color: var(--brass);
+  accent-color: var(--ink);
 }
 
 .section-label {
@@ -948,6 +945,63 @@ input[type="range"] {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.start-here-feature-heading {
+  width: fit-content;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding: 10px 14px 9px;
+  border-bottom: 2px solid var(--ink);
+  color: var(--ink);
+  font-size: 13px;
+  letter-spacing: 0.8px;
+  justify-content: center;
+  text-align: center;
+}
+
+.start-here-bento {
+  margin-bottom: 48px;
+}
+
+.start-here-bento .bento-grid {
+  gap: 20px;
+}
+
+.start-here-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 48px;
+}
+
+@media (max-width: 520px) {
+  .start-here-actions {
+    flex-direction: column;
+  }
+
+  .start-here-actions .btn {
+    width: min(100%, 260px);
+  }
+}
+
+.start-here-feature-intro {
+  max-width: 640px;
+  margin: 0 auto 18px;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+  padding-left: 14px;
+  border-left: 3px solid var(--ink-softer);
+}
+
+.start-here-subheading {
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: 0.8px;
 }
 
 .section-label .count {
@@ -995,8 +1049,8 @@ input[type="range"] {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 500;
-  background: var(--brass-bg);
-  color: var(--brass-dark);
+  background: var(--accent-bg);
+  color: var(--ink);
   padding: 3px 10px;
   border-radius: 999px;
   white-space: nowrap;
@@ -1055,8 +1109,8 @@ input[type="range"] {
 }
 
 .source-item.pulse {
-  border-color: var(--brass-soft);
-  box-shadow: 0 0 0 3px var(--brass-bg);
+  border-color: var(--ink-softer);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 /* ---------------------------------------------------------------------
@@ -1072,7 +1126,7 @@ input[type="range"] {
 .draft-page {
   background: #fff;
   border: 1px solid var(--rule-soft);
-  border-top: 3px solid var(--brass);
+  border-top: 3px solid var(--ink);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   padding: 34px 36px;
@@ -1097,7 +1151,7 @@ input[type="range"] {
   font-family: var(--font-mono);
   font-size: 10px;
   vertical-align: super;
-  background: var(--brass);
+  background: var(--ink);
   color: #fff;
   border-radius: 4px;
   padding: 1px 4px;
@@ -1107,7 +1161,7 @@ input[type="range"] {
   line-height: 1;
   transition: background 0.12s var(--ease), transform 0.12s var(--ease);
 }
-.cite-badge:hover { background: var(--brass-dark); transform: translateY(-1px); }
+.cite-badge:hover { background: var(--ink-soft); transform: translateY(-1px); }
 
 .gap-badge {
   font-family: var(--font-mono);
@@ -1145,7 +1199,7 @@ input[type="range"] {
   line-height: 1.65;
   color: var(--text);
   margin: 10px 0 0;
-  border-left: 2px solid var(--brass-soft);
+  border-left: 2px solid var(--ink-softer);
   padding-left: 12px;
   white-space: pre-wrap;
 }
@@ -1232,10 +1286,11 @@ input[type="range"] {
    translucent-ink-idle / solid-ink-active language so an in-page toggle
    reads as the same control family as the nav, not a different widget. */
 .view-toggle {
-  display: inline-flex;
+  display: flex;
+  width: fit-content;
   gap: 3px;
   padding: 3px;
-  margin-bottom: 18px;
+  margin: 0 auto 18px;
   background: var(--ink-glass);
   border: 1px solid var(--ink-glass-border);
   border-radius: calc(var(--radius-sm) + 3px);
@@ -1494,8 +1549,8 @@ input[type="range"] {
 
 .hexagon-cell {
   position: absolute;
-  background: var(--brass);
+  background: #b9bec3;
   clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
-  transition: opacity 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+  transition: opacity 0.32s var(--ease-out), transform 0.32s var(--ease-out);
   pointer-events: none;
 }

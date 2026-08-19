@@ -4,19 +4,30 @@ import { motion } from "motion/react";
 const EASE = [0.76, 0, 0.24, 1];
 const DURATION = 0.32;
 
-// Two-phase wipe: a solid panel grows from the left edge to fully cover
-// the screen ("covering"), the caller swaps the actual page content while
-// it's hidden underneath, then the panel shrinks away toward the right
-// edge ("revealing") -- same leading edge moving left-to-right the whole
-// time, reading as one continuous sweep rather than two separate moves.
-export default function PageWipe({ phase, onCoverComplete, onRevealComplete }) {
+// Two-phase wipe: the panel covers and reveals in the direction of travel.
+export default function PageWipe({
+  phase,
+  direction = "right",
+  axis = "x",
+  onCoverComplete,
+  onRevealComplete,
+}) {
+  const movingForward = direction === (axis === "y" ? "down" : "right");
+  const scaleAxis = axis === "y" ? "scaleY" : "scaleX";
+  const coverOrigin = movingForward
+    ? axis === "y" ? "top" : "left"
+    : axis === "y" ? "bottom" : "right";
+  const revealOrigin = movingForward
+    ? axis === "y" ? "bottom" : "right"
+    : axis === "y" ? "top" : "left";
+
   if (phase === "covering") {
     return (
       <motion.div
         className="page-wipe"
-        style={{ transformOrigin: "left" }}
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
+        style={{ transformOrigin: coverOrigin }}
+        initial={{ [scaleAxis]: 0 }}
+        animate={{ [scaleAxis]: 1 }}
         transition={{ duration: DURATION, ease: EASE }}
         onAnimationComplete={onCoverComplete}
       />
@@ -25,9 +36,9 @@ export default function PageWipe({ phase, onCoverComplete, onRevealComplete }) {
   return (
     <motion.div
       className="page-wipe"
-      style={{ transformOrigin: "right" }}
-      initial={{ scaleX: 1 }}
-      animate={{ scaleX: 0 }}
+        style={{ transformOrigin: revealOrigin }}
+      initial={{ [scaleAxis]: 1 }}
+      animate={{ [scaleAxis]: 0 }}
       transition={{ duration: DURATION, ease: EASE }}
       onAnimationComplete={onRevealComplete}
     />

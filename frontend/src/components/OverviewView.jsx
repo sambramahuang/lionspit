@@ -24,7 +24,7 @@ function byTrust(a, b) {
   return (b.usage_count || 0) - (a.usage_count || 0);
 }
 
-export default function OverviewView({ onPreview, onGoToSearch }) {
+export default function OverviewView({ onPreview, onGoToLibrary, onGoToSearch }) {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,10 +65,13 @@ export default function OverviewView({ onPreview, onGoToSearch }) {
     <>
       <div className="page-header">
         <h1 className="page-title">Start here</h1>
+        <p className="page-subtitle">
+          Learn what Kitsu can do for your work, then explore the firm's best precedents below.
+        </p>
       </div>
 
-      <div className="section-label" style={{ margin: "0 0 10px" }}>What this tool does</div>
-      <BentoGrid>
+      <div className="start-here-bento">
+        <BentoGrid>
         <BentoCard
           tall
           icon={<SearchGlyph />}
@@ -101,16 +104,28 @@ export default function OverviewView({ onPreview, onGoToSearch }) {
           name="Draft with citations"
           description="Generate a first draft strictly from the sources you select — every clause traces back to its exact source document and excerpt, and anything the sources don't cover is flagged as a gap instead of invented."
         />
-      </BentoGrid>
+        </BentoGrid>
+      </div>
 
-      {onGoToSearch && (
-        <button className="btn btn-primary" style={{ margin: "16px 0 24px" }} onClick={onGoToSearch}>
-          Go to Search &amp; Draft
-        </button>
+      {(onGoToLibrary || onGoToSearch) && (
+        <div className="start-here-actions">
+          {onGoToLibrary && (
+            <button className="btn btn-primary" onClick={onGoToLibrary}>
+              Go to Library
+            </button>
+          )}
+          {onGoToSearch && (
+            <button className="btn btn-primary" onClick={onGoToSearch}>
+              Go to Search &amp; Draft
+            </button>
+          )}
+        </div>
       )}
 
-      <div className="section-label" style={{ margin: "30px 0 10px" }}>The firm's best work</div>
-      <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.6, margin: "0 0 6px", maxWidth: 640 }}>
+      <div className="section-label start-here-feature-heading">
+        Best precedents from the firm
+      </div>
+      <p className="start-here-feature-intro">
         New to the team, or just picking up something outside your usual practice area? This is
         the firm's collective best work, organized so you don't have to already know where to
         look.
@@ -128,7 +143,7 @@ export default function OverviewView({ onPreview, onGoToSearch }) {
 
       {!loading && mostRelied.length > 0 && (
         <>
-          <div className="section-label">Most relied upon firm-wide</div>
+          <div className="section-label start-here-subheading">Most relied upon firm-wide</div>
           <div className="result-grid" style={{ marginBottom: 24 }}>
             {mostRelied.map((d) => (
               <StartHereCard key={d.doc_id} doc={d} onPreview={onPreview} />

@@ -69,7 +69,7 @@ export default function UploadPanel({ onIngested }) {
             ))}
           </ul>
           <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-            <button className="btn btn-brass" onClick={runIngest} disabled={busy}>
+            <button className="btn btn-ink" onClick={runIngest} disabled={busy}>
               {busy ? "Reading & tagging..." : `Ingest ${staged.length} file(s)`}
             </button>
             <button className="btn btn-ghost" onClick={() => setStaged([])} disabled={busy}>

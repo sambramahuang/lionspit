@@ -59,7 +59,7 @@ function ClusterDiagram({ cluster, onPreview }) {
         <svg width={svgWidth} height={svgHeight} className="lineage-svg">
           <defs>
             <marker id={`arrow-${cluster.key}`} markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-              <path d="M0,0 L6,3 L0,6 Z" fill="var(--brass)" />
+              <path d="M0,0 L6,3 L0,6 Z" fill="var(--ink)" />
             </marker>
           </defs>
           {history.map((node, i) => {

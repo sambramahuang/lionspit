@@ -12,7 +12,7 @@ export default function HeroView({ onExplore }) {
       </p>
       {onExplore && (
         <button className="btn btn-primary hero-cta" onClick={onExplore}>
-          See what this tool does
+          Start Here
         </button>
       )}
     </div>

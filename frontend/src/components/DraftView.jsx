@@ -23,7 +23,7 @@ function renderInlineMarkdown(text, keyPrefix) {
 
 /** Splits draft text on [[n]]/[[GAP: ...]] markers and standalone "---"
  * section dividers (the model sometimes writes one before a trailing
- * "Drafting notes" section), rendering markers as clickable brass badges
+ * "Drafting notes" section), rendering markers as clickable navy badges
  * and dividers as a real rule instead of three literal dashes. Plain-text
  * runs in between also get markdown bold spans resolved (see above). */
 function renderDraftText(text, onCiteClick) {
