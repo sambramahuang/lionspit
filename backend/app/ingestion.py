@@ -28,6 +28,7 @@ exactly these keys:
 {
   "client_name": string or null -- the specific named client/company/primary party this document is for (e.g. "Alpha Robotics Pte Ltd"). Identifies WHICH matter this is, as distinct from matter_type (WHAT KIND of matter). Two unrelated companies' documents must never share a client_name even if matter_type/practice_area/jurisdiction match,
   "counterparty_name": string or null -- the other specific named party to this document, if any (e.g. the landlord if client_name is the tenant, or vice versa). If a document names two parties, extract BOTH client_name and counterparty_name even if it's unclear from context alone which one is "the client" -- consistently naming both parties matters more than which field each goes in,
+  "matter_reference": string or null -- the firm's internal matter/file number or a court case/suit/summons-file number, ONLY if the document itself states one for the overarching matter (e.g. "HC/S 214/2026", "MAT-2026-0398"). Extract just the bare code, not the surrounding phrase it appears in (drop prefixes like "Matter", "Suit No.", "Ref:"). If the document is itself a specific application/summons WITHIN a larger suit (e.g. "Summons No. HC/SUM 611/2026"), extract the overarching suit/matter number it belongs to, not the summons number -- the summons is one step in the matter, not the matter itself. Two different documents that are genuinely part of the same client engagement should get the identical reference if the text supports it; leave null rather than guessing one that isn't actually stated,
   "matter_type": string or null,
   "practice_area": string or null,
   "jurisdiction": string or null,
@@ -57,7 +58,16 @@ def extract_text(filename: str, content: bytes) -> str:
         return "\n".join(page.extract_text() or "" for page in reader.pages)
     if lower.endswith(".docx"):
         doc = DocxDocument(io.BytesIO(content))
-        return "\n".join(p.text for p in doc.paragraphs)
+        # Real redlines in the wild are usually manual strikethrough/underline
+        # character formatting, not actual Word tracked-changes XML -- so a
+        # naive paragraph.text read concatenates the "deleted" and "inserted"
+        # runs back-to-back with no separator (e.g. "12 weeks10 weeks"),
+        # garbling both the metadata LLM's input and clause-search embeddings.
+        # Skipping struck-through runs recovers the clean, current reading.
+        lines = []
+        for p in doc.paragraphs:
+            lines.append("".join(r.text for r in p.runs if not r.font.strike))
+        return "\n".join(lines)
     # .txt and anything else: best-effort decode
     return content.decode("utf-8", errors="ignore")
 

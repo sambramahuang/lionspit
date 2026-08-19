@@ -15,27 +15,26 @@ class DocumentMetadata(BaseModel):
     yield a clean answer -- an empty field is more honest than a guess,
     and the UI should show "not detected" rather than fabricate one.
     """
-
-    client_name: str | None = None
-    counterparty_name: str | None = None
-    matter_type: str | None = None
-    practice_area: str | None = None
-    jurisdiction: str | None = None
-    industry: str | None = None
-    client_type: str | None = None
-    transaction_value: str | None = None
-    document_date: str | None = None
-    responsible_lawyer: str | None = None
-    counterparty_type: str | None = None
-    document_type: str | None = None
-    status: str | None = None  # "In force" | "Repealed" | "Amending/ overruled"
-    matter_completed: bool | None = None
-    document_executed: bool | None = None
-    is_draft_or_model: str | None = None  # "draft" | "model" | "executed" | "unknown"
-    version: str | None = None
-    partner_approved: bool | None = None
-    short_description: str | None = None
-    confidentiality: str | None = "internal"  # "public" | "internal" | "restricted"
+    client_name: Optional[str] = None
+    counterparty_name: Optional[str] = None
+    matter_reference: Optional[str] = None
+    matter_type: Optional[str] = None
+    practice_area: Optional[str] = None
+    jurisdiction: Optional[str] = None
+    industry: Optional[str] = None
+    client_type: Optional[str] = None
+    transaction_value: Optional[str] = None
+    document_date: Optional[str] = None
+    responsible_lawyer: Optional[str] = None
+    counterparty_type: Optional[str] = None
+    document_type: Optional[str] = None
+    matter_completed: Optional[bool] = None
+    document_executed: Optional[bool] = None
+    is_draft_or_model: Optional[str] = None  # "draft" | "model" | "executed" | "unknown"
+    version: Optional[str] = None
+    partner_approved: Optional[bool] = None
+    short_description: Optional[str] = None
+    confidentiality: Optional[str] = "internal"  # "public" | "internal" | "restricted"
 
 
 class DocumentRecord(BaseModel):

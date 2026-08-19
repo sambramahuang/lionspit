@@ -55,20 +55,12 @@ function SearchIcon() {
   );
 }
 
-function MattersIcon() {
-  return (
-    <svg {...ICON_PROPS}>
-      <path d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7l8-4z" />
-    </svg>
-  );
-}
-
 const TAB_ITEMS = [
   { key: "start", label: "Start Here", icon: <StartHereIcon /> },
   { key: "library", label: "Library", icon: <LibraryIcon /> },
   { key: "search", label: "Search & Draft", icon: <SearchIcon /> },
-  { key: "matters", label: "Matters", icon: <MattersIcon /> },
 ];
+
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = checking, null = signed out
@@ -232,6 +224,12 @@ export default function App() {
               >
                 Lineage graph
               </button>
+              <button
+                className={`view-toggle-btn ${libraryView === "matters" ? "active" : ""}`}
+                onClick={() => setLibraryView("matters")}
+              >
+                Matters
+              </button>
             </div>
 
             {libraryView === "list" && (
@@ -245,11 +243,13 @@ export default function App() {
             {libraryView === "lineage" && (
               <LineageGraph refreshKey={refreshKey} onPreview={preview.openPreview} />
             )}
+            {libraryView === "matters" && (
+              <MattersView refreshKey={refreshKey} isPartner={!!me?.is_partner} />
+            )}
           </>
         )}
 
         {displayedTab === "search" && <SearchPage onPreview={preview.openPreview} />}
-        {displayedTab === "matters" && <MattersView isPartner={!!me?.is_partner} />}
       </main>
 
       {wipePhase && (

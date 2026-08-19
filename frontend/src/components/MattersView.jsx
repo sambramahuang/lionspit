@@ -40,7 +40,7 @@ function EmailListEditor({ emails, onChange }) {
   );
 }
 
-export default function MattersView({ isPartner }) {
+export default function MattersView({ isPartner, refreshKey }) {
   const [matters, setMatters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,7 +52,11 @@ export default function MattersView({ isPartner }) {
     setError(null);
     api.listMatters().then(setMatters).catch((e) => setError(e.message)).finally(() => setLoading(false));
   };
-  useEffect(load, []);
+  // Re-fetch whenever the library changes (e.g. a fresh ingest) so a newly
+  // -detected conflict flag shows up here without navigating away and back
+  // -- important now that this view sits right next to the Ingest button
+  // instead of behind its own separate tab.
+  useEffect(load, [refreshKey]);
 
   const patch = (key, fn) =>
     setMatters((prev) => prev.map((m) => (m.matter_key === key ? { ...m, wall: fn(m.wall) } : m)));
@@ -86,53 +90,33 @@ export default function MattersView({ isPartner }) {
     }
   };
 
-  const header = (
-    <div className="page-header">
-      <h1 className="page-title">Matters</h1>
-      <p className="page-subtitle">
-        Every matter the corpus has enough signal to cluster, with its ethical-wall status and any
-        automatically detected conflict of interest. Partners can wall a matter or acknowledge a
-        conflict flag here — everyone else sees status only. Conflicts are never applied
-        automatically; a partner always makes the call.
-      </p>
-    </div>
-  );
-
   if (loading) {
-    return (
-      <>
-        {header}
-        <p className="spinner-text">Loading matters...</p>
-      </>
-    );
+    return <p className="spinner-text">Loading matters...</p>;
   }
   if (error) {
-    return (
-      <>
-        {header}
-        <div className="error-banner">{error}</div>
-      </>
-    );
+    return <div className="error-banner">{error}</div>;
   }
   if (matters.length === 0) {
     return (
-      <>
-        {header}
-        <div className="empty-state">
-          No matters yet — a matter forms once two or more documents share the same named parties and matter type.
-        </div>
-      </>
+      <div className="empty-state">
+        No matters yet — a matter forms once an ingested document has an identifiable client (or
+        matter reference) and matter type.
+      </div>
     );
   }
 
   return (
     <>
-      {header}
-
       <div className="card">
         <div className="section-label">
           Matters <span className="count">{matters.length}</span>
         </div>
+        <p style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "0 0 14px" }}>
+          Every matter the corpus has enough signal to cluster, with its ethical-wall status and
+          any automatically detected conflict of interest. Partners can wall a matter or
+          acknowledge a conflict flag here — everyone else sees status only. Conflicts are never
+          applied automatically; a partner always makes the call.
+        </p>
         <div style={{ overflowX: "auto" }}>
         <table className="doc-table">
           <thead>

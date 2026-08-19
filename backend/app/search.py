@@ -495,11 +495,13 @@ def compute_lineage(user_email: str) -> LineageResponse:
         client = current["metadata"].get("client_name") or "Unnamed client"
         matter = current["metadata"].get("matter_type") or "Matter"
         jurisdiction = current["metadata"].get("jurisdiction")
-        label = (
-            f"{client} — {matter} · {jurisdiction}"
-            if jurisdiction
-            else f"{client} — {matter}"
-        )
+        label = f"{client} — {matter} · {jurisdiction}" if jurisdiction else f"{client} — {matter}"
+        # Same reasoning as matters.summarize()'s label: show the explicit
+        # reference number actually driving cluster_key's grouping, not just
+        # the current document's own (possibly type-specific) matter_type.
+        reference = next((r["metadata"].get("matter_reference") for r in group_sorted if r["metadata"].get("matter_reference")), None)
+        if reference:
+            label = f"{reference} — {label}"
 
         clusters.append(
             LineageCluster(
