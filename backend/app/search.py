@@ -8,8 +8,11 @@ Flow (mirrors the demo script):
      approval + jurisdiction match.
   4. Detect same-matter clusters and flag clearly superseded / non
      -approved documents as "rejected", with a plain-English reason.
-  5. Whatever's left, ranked, becomes "kept" (top N) and
-     "other_candidates" (the rest) -- both filterable/comparable in the UI.
+  5. Have the LLM judge true relevance on what's left; drop anything it
+     judges not genuinely relevant into "rejected" too.
+  6. Whatever survives becomes "kept" (anything scoring within a
+     threshold of the top result, capped) and "other_candidates" (the
+     rest) -- both filterable/comparable in the UI.
 """
 
 from collections import defaultdict
@@ -99,6 +102,14 @@ def _parse_date(value):
     return None
 
 
+# How close to the top-scoring result a candidate must be to count as
+# "kept" (see run_search's Step 6) -- 0.8 means anything scoring within 20%
+# of the best match qualifies. Relative rather than an absolute cutoff
+# because `score` is a weighted composite (Step 3) that shifts with the
+# caller's ranking weights, so a fixed number would drift in meaning as
+# those weights change.
+RELATIVE_KEEP_THRESHOLD = 0.8
+
 RECENCY_WINDOWS = {
     "30d": timedelta(days=30),
     "6m": timedelta(days=182),
@@ -187,8 +198,12 @@ def run_search(req, user_email: str) -> SearchResponse:
             for c in visible
             if _matches_recency(c["meta"].get("document_date"), req.recency_filter)
         ]
-    if req.status_filters:
-        visible = [c for c in visible if c["meta"].get("status") in req.status_filters]
+    if req.is_draft_or_model_filters:
+        visible = [
+            c
+            for c in visible
+            if c["meta"].get("is_draft_or_model") in req.is_draft_or_model_filters
+        ]
     if req.document_type_filters:
         visible = [
             c
@@ -330,8 +345,22 @@ def run_search(req, user_email: str) -> SearchResponse:
                 )
         remaining = still_relevant
 
-    keep_n = max(req.keep_top, 0)
-    kept_raw, other_raw = remaining[:keep_n], remaining[keep_n:]
+    # "kept" is threshold-based, not a fixed top-N: anything scoring within
+    # RELATIVE_KEEP_THRESHOLD of the best result in this pool qualifies, so
+    # a matter's genuine current version (which already won its own
+    # supersession cluster in Step 4) doesn't get bumped into the collapsed
+    # "other candidates" list just because unrelated documents from other
+    # matters happened to score higher on this particular query. keep_top
+    # still caps how many can qualify, so a lenient query can't flood the
+    # main results view. `remaining` is already sorted by score descending
+    # (carried over from the Step 3 sort; Steps 4-5 only filter, never
+    # reorder), so remaining[0] is the top score.
+    top_score = remaining[0]["score"] if remaining else 0.0
+    threshold = top_score * RELATIVE_KEEP_THRESHOLD
+    max_kept = max(req.keep_top, 0)
+    kept_raw = [c for c in remaining if c["score"] >= threshold][:max_kept]
+    kept_ids = {c["doc_id"] for c in kept_raw}
+    other_raw = [c for c in remaining if c["doc_id"] not in kept_ids]
 
     def to_result_item(c):
         return SearchResultItem(

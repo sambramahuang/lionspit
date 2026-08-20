@@ -1246,6 +1246,23 @@ input[type="range"] {
   padding: 1px 6px;
 }
 
+/* Same warning family as .gap-badge (red = needs attention, matching the
+   rest of the app's flag vocabulary) but a solid fill so it reads as more
+   urgent than an honest, expected "gap" -- this is the model failing to
+   follow its own citation rule (see drafting.py's _flag_uncited_clauses),
+   not a known limitation it disclosed. */
+.uncited-badge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  background: var(--flag-red);
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin: 0 1px;
+  white-space: nowrap;
+}
+
 .sources-panel {
   position: sticky;
   top: 20px;

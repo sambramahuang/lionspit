@@ -21,14 +21,17 @@ function renderInlineMarkdown(text, keyPrefix) {
   return nodes;
 }
 
-/** Splits draft text on [[n]]/[[GAP: ...]] markers and standalone "---"
- * section dividers (the model sometimes writes one before a trailing
- * "Drafting notes" section), rendering markers as clickable navy badges
- * and dividers as a real rule instead of three literal dashes. Plain-text
- * runs in between also get markdown bold spans resolved (see above). */
+/** Splits draft text on [[n]]/[[GAP: ...]]/[[UNCITED]] markers and
+ * standalone "---" section dividers (the model sometimes writes one
+ * before a trailing "Drafting notes" section), rendering markers as
+ * clickable navy badges (citations), red badges (gaps, and clauses the
+ * backend caught with neither a citation nor a gap marker -- see
+ * drafting.py's _flag_uncited_clauses) and dividers as a real rule
+ * instead of three literal dashes. Plain-text runs in between also get
+ * markdown bold spans resolved (see above). */
 function renderDraftText(text, onCiteClick) {
   const parts = [];
-  const regex = /\[\[(GAP:[^\]]*|\d+)\]\]|^[ \t]*-{3,}[ \t]*$/gm;
+  const regex = /\[\[(GAP:[^\]]*|UNCITED|\d+)\]\]|^[ \t]*-{3,}[ \t]*$/gm;
   let lastIndex = 0;
   let match;
   let key = 0;
@@ -42,6 +45,12 @@ function renderDraftText(text, onCiteClick) {
     const token = match[1];
     if (token === undefined) {
       parts.push(<hr key={key++} className="draft-divider" />);
+    } else if (token === "UNCITED") {
+      parts.push(
+        <span key={key++} className="uncited-badge" title="Not cited to any source -- review before use">
+          ⚠ uncited
+        </span>
+      );
     } else if (token.startsWith("GAP:")) {
       parts.push(
         <span key={key++} className="gap-badge">gap: {token.slice(4).trim()}</span>
@@ -138,6 +147,20 @@ export default function DraftView({ query, selectedDocIds, onCiteClick }) {
                 <div className="section-label" style={{ margin: "0 0 6px" }}>Gaps flagged, not invented</div>
                 <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12.5 }}>
                   {draft.gaps.map((g, i) => <li key={i}>{g}</li>)}
+                </ul>
+              </div>
+            )}
+            {draft.flagged_uncited?.length > 0 && (
+              <div className="card" style={{ padding: "12px 14px" }}>
+                <div className="section-label" style={{ margin: "0 0 6px" }}>
+                  ⚠ Uncited clauses <span className="count">{draft.flagged_uncited.length}</span>
+                </div>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "0 0 8px" }}>
+                  Written without a source citation or a flagged gap -- a drafting-prompt slip, not
+                  a verified precedent. Review before relying on these.
+                </p>
+                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12.5 }}>
+                  {draft.flagged_uncited.map((c, i) => <li key={i}>{c}</li>)}
                 </ul>
               </div>
             )}

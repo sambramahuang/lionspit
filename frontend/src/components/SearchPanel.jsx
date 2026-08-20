@@ -54,6 +54,7 @@ function AttachIcon() {
 
 const WEIGHT_LABELS = {
   similarity: "Similarity to query",
+  recency: "Recency",
   frequency: "Firm usage frequency",
   partner_approval: "Partner approval",
   jurisdiction_match: "Jurisdiction match",
@@ -63,10 +64,18 @@ const RECENCY_OPTIONS = [
   ["30d", "Past 30 days"], ["6m", "Past 6 months"], ["1y", "Past 1 year"],
   ["3y", "Past 3 years"], ["5y", "Past 5 years"],
 ];
-const STATUS_OPTIONS = ["In force", "Repealed", "Amending/ overruled"];
+// Mirrors ingestion.py's is_draft_or_model values -- a firm precedent's
+// currency (draft vs. model vs. executed) rather than a legislative status
+// like "in force"/"repealed", which doesn't apply to a firm's own documents.
+const DOCUMENT_STATUS_OPTIONS = [
+  ["draft", "Draft"],
+  ["model", "Model / template"],
+  ["executed", "Executed"],
+  ["unknown", "Unknown"],
+];
 const DOCUMENT_TYPE_OPTIONS = [
-  "Cases / Judgments", "Legislation", "Regulations", "Contracts / Agreements",
-  "Legal opinions", "Pleadings", "Firm precedents", "Other",
+  "Contracts / Agreements", "Legal opinions / Advice", "Pleadings / Court filings",
+  "Client correspondence", "Internal memo", "Billing", "Other",
 ];
 
 export default function SearchPanel({
@@ -75,7 +84,7 @@ export default function SearchPanel({
   jurisdictionFilter, setJurisdictionFilter,
   matterTypeFilter, setMatterTypeFilter,
   recencyFilter, setRecencyFilter,
-  statusFilters, setStatusFilters,
+  isDraftOrModelFilters, setIsDraftOrModelFilters,
   documentTypeFilters, setDocumentTypeFilters,
   weights, setWeights,
   mode, setMode,
@@ -267,16 +276,16 @@ export default function SearchPanel({
 
                   <div className="filter-checklists">
                     <fieldset className="filter-checklist">
-                      <legend>Recency</legend>
+                      <legend>Document date</legend>
                       {RECENCY_OPTIONS.map(([value, label]) => (
                         <label key={value}><input type="radio" name="recency" checked={recencyFilter === value} onChange={() => setRecencyFilter(value)} />{label}</label>
                       ))}
                       <label><input type="radio" name="recency" checked={!recencyFilter} onChange={() => setRecencyFilter("")} />Any time</label>
                     </fieldset>
                     <fieldset className="filter-checklist">
-                      <legend>Status category</legend>
-                      {STATUS_OPTIONS.map((value) => (
-                        <label key={value}><input type="checkbox" checked={statusFilters.includes(value)} onChange={() => toggleFilter(setStatusFilters, value)} />{value}</label>
+                      <legend>Document status</legend>
+                      {DOCUMENT_STATUS_OPTIONS.map(([value, label]) => (
+                        <label key={value}><input type="checkbox" checked={isDraftOrModelFilters.includes(value)} onChange={() => toggleFilter(setIsDraftOrModelFilters, value)} />{label}</label>
                       ))}
                     </fieldset>
                     <fieldset className="filter-checklist">
@@ -293,7 +302,12 @@ export default function SearchPanel({
                 Customize weights
               </div>
               <div className="weights-panel">
-                {Object.entries(weights).filter(([key]) => key !== "recency").map(([key, value]) => (
+                {/* recency has no effect on clause search (run_clause_search
+                    doesn't use it -- see search.py) so it's hidden there
+                    rather than shown as a slider that silently does nothing */}
+                {Object.entries(weights)
+                  .filter(([key]) => mode === "documents" || key !== "recency")
+                  .map(([key, value]) => (
                   <div className="weight-row" key={key}>
                     <label>
                       <span>{WEIGHT_LABELS[key] || key}</span>

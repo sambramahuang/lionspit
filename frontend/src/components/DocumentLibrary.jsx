@@ -7,9 +7,30 @@ const FACET_FIELDS = [
   { key: "matter_type", label: "Matter type" },
   { key: "document_type", label: "Document type" },
   { key: "client_type", label: "Client type" },
+  { key: "is_draft_or_model", label: "Document status" },
 ];
 
-const EMPTY_FACETS = { practice_area: "", jurisdiction: "", matter_type: "", document_type: "", client_type: "" };
+const EMPTY_FACETS = {
+  practice_area: "",
+  jurisdiction: "",
+  matter_type: "",
+  document_type: "",
+  client_type: "",
+  is_draft_or_model: "",
+};
+
+// is_draft_or_model's raw values are lowercase (ingestion.py's schema),
+// unlike every other facet here which is free-text the LLM already
+// extracts in natural casing -- map to a display label rather than
+// showing "draft"/"model" literally in the filter dropdown.
+const IS_DRAFT_OR_MODEL_LABELS = {
+  draft: "Draft",
+  model: "Model / template",
+  executed: "Executed",
+  unknown: "Unknown",
+};
+const facetOptionLabel = (key, value) =>
+  key === "is_draft_or_model" ? IS_DRAFT_OR_MODEL_LABELS[value] || value : value;
 
 export default function DocumentLibrary({ refreshKey, onChanged, onPreview, isPartner }) {
   const [docs, setDocs] = useState([]);
@@ -145,7 +166,7 @@ export default function DocumentLibrary({ refreshKey, onChanged, onPreview, isPa
               >
                 <option value="">{label}: all</option>
                 {facetOptions[key].map((v) => (
-                  <option key={v} value={v}>{v}</option>
+                  <option key={v} value={v}>{facetOptionLabel(key, v)}</option>
                 ))}
               </select>
             ))}

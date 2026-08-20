@@ -30,7 +30,6 @@ class DocumentMetadata(BaseModel):
     responsible_lawyer: Optional[str] = None
     counterparty_type: Optional[str] = None
     document_type: Optional[str] = None
-    status: Optional[str] = None  # "In force" | "Repealed" | "Amending/ overruled"
     matter_completed: Optional[bool] = None
     document_executed: Optional[bool] = None
     is_draft_or_model: Optional[str] = None  # "draft" | "model" | "executed" | "unknown"
@@ -83,7 +82,7 @@ class SearchRequest(BaseModel):
     jurisdiction_filter: str | None = None
     matter_type_filter: str | None = None
     recency_filter: str | None = None
-    status_filters: list[str] = Field(default_factory=list)
+    is_draft_or_model_filters: list[str] = Field(default_factory=list)
     document_type_filters: list[str] = Field(default_factory=list)
     weights: RankingWeights = Field(default_factory=RankingWeights)
     # Raw nearest-neighbor pool pulled before wall-filtering/ranking/
@@ -95,7 +94,13 @@ class SearchRequest(BaseModel):
     # embedding similarity -- below its own earlier drafts/redlines and a
     # deliberately-planted stale duplicate -- and never reached scoring.
     candidate_pool: int = 20
-    keep_top: int = 2
+    # "kept" is now threshold-based (see run_search) -- anything scoring
+    # within a fraction of the top result's score gets in, not just a fixed
+    # top-N -- so a matter's genuine current version isn't hidden in the
+    # collapsed "other candidates" list just because unrelated documents
+    # from other matters happened to outscore it on this particular query.
+    # keep_top now only acts as a safety cap on how many can qualify.
+    keep_top: int = 8
 
 
 class SearchResultItem(BaseModel):
@@ -238,6 +243,7 @@ class Citation(BaseModel):
 
 
 class DraftResponse(BaseModel):
-    draft_text: str  # contains inline [[n]] markers matching citations
+    draft_text: str  # contains inline [[n]] / [[GAP:...]] / [[UNCITED]] markers
     citations: list[Citation]
     gaps: list[str]  # things the sources didn't cover, flagged instead of invented
+    flagged_uncited: list[str] = Field(default_factory=list)  # clauses the model wrote with neither a citation nor a gap marker -- a prompt-compliance slip, surfaced instead of silently passing as grounded

@@ -7,6 +7,7 @@ import DraftView from "./DraftView.jsx";
 
 const DEFAULT_WEIGHTS = {
   similarity: 0.5,
+  recency: 0.5,
   frequency: 0.5,
   partner_approval: 0.5,
   jurisdiction_match: 0.5,
@@ -25,14 +26,14 @@ export default function SearchPage({ onPreview }) {
   const [recencyFilter, setRecencyFilter] = useState("");
   // Empty = unfiltered, matching every other filter here (jurisdiction,
   // matter type, recency) and search.py's own convention (`if
-  // req.status_filters:` only applies the filter when non-empty). Defaulting
-  // these to "every option pre-checked" instead looks equivalent in the UI
-  // but isn't: search.py then filters for metadata.status/document_type
-  // being IN that list, and most of the corpus predates these two fields
-  // entirely (status is unset, document_type is free-text from the older
-  // ingestion prompt) -- so a "fully checked" default silently excluded
-  // every document from every search.
-  const [statusFilters, setStatusFilters] = useState([]);
+  // req.is_draft_or_model_filters:` only applies the filter when
+  // non-empty). Defaulting these to "every option pre-checked" instead
+  // looks equivalent in the UI but isn't: search.py then filters for
+  // metadata.is_draft_or_model/document_type being IN that list, and any
+  // document ingested under an older schema version predates the current
+  // category list entirely -- so a "fully checked" default would silently
+  // exclude every such document from every search.
+  const [isDraftOrModelFilters, setIsDraftOrModelFilters] = useState([]);
   const [documentTypeFilters, setDocumentTypeFilters] = useState([]);
   const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
 
@@ -127,7 +128,7 @@ export default function SearchPage({ onPreview }) {
           jurisdiction_filter: jurisdictionFilter || null,
           matter_type_filter: matterTypeFilter || null,
           recency_filter: recencyFilter || null,
-          status_filters: statusFilters,
+          is_draft_or_model_filters: isDraftOrModelFilters,
           document_type_filters: documentTypeFilters,
           weights,
         });
@@ -178,7 +179,7 @@ export default function SearchPage({ onPreview }) {
         jurisdictionFilter={jurisdictionFilter} setJurisdictionFilter={setJurisdictionFilter}
         matterTypeFilter={matterTypeFilter} setMatterTypeFilter={setMatterTypeFilter}
         recencyFilter={recencyFilter} setRecencyFilter={setRecencyFilter}
-        statusFilters={statusFilters} setStatusFilters={setStatusFilters}
+        isDraftOrModelFilters={isDraftOrModelFilters} setIsDraftOrModelFilters={setIsDraftOrModelFilters}
         documentTypeFilters={documentTypeFilters} setDocumentTypeFilters={setDocumentTypeFilters}
         weights={weights} setWeights={setWeights}
         mode={mode} setMode={switchMode}
