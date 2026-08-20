@@ -68,6 +68,14 @@ export const api = {
     return request("/api/ingest", { method: "POST", body: form });
   },
 
+  // Extracts a file's text for use as one-off search context -- does NOT
+  // add it to the library (unlike ingest above).
+  extractText: (file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request("/api/extract-text", { method: "POST", body: form });
+  },
+
   search: (payload) =>
     request("/api/search", { method: "POST", body: JSON.stringify(payload) }),
 

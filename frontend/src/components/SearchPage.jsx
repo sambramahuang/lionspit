@@ -15,6 +15,11 @@ const DEFAULT_WEIGHTS = {
 export default function SearchPage({ onPreview }) {
   const [mode, setMode] = useState("documents"); // "documents" | "clauses"
   const [query, setQuery] = useState("");
+  // { filename, text } | null -- a document's extracted text, attached as
+  // one-off search context (e.g. the facts of the matter a lawyer is
+  // currently working on). Never ingested into the library; see
+  // /api/extract-text and SearchPanel's attach control.
+  const [attachedContext, setAttachedContext] = useState(null);
   const [jurisdictionFilter, setJurisdictionFilter] = useState("");
   const [matterTypeFilter, setMatterTypeFilter] = useState("");
   const [recencyFilter, setRecencyFilter] = useState("");
@@ -96,18 +101,27 @@ export default function SearchPage({ onPreview }) {
     setError(null);
   };
 
+  // What actually gets embedded and sent as the query: the lawyer's own
+  // typed text, plus an attached document's extracted text appended as
+  // clearly-labeled extra context -- kept separate in the UI (a removable
+  // chip, not mixed into the visible textarea) so attaching a document
+  // never overwrites or buries what they typed.
+  const effectiveQuery = attachedContext
+    ? `${query.trim()}\n\nAdditional context from ${attachedContext.filename}:\n${attachedContext.text}`
+    : query;
+
   const runSearch = async () => {
-    if (!query.trim()) return;
+    if (!query.trim() && !attachedContext) return;
     setBusy(true);
     setError(null);
     try {
       if (mode === "clauses") {
-        const res = await api.searchClauses({ query, weights });
+        const res = await api.searchClauses({ query: effectiveQuery, weights });
         setClauseResult(res);
         setSelectedIds([...new Set(res.kept.map((k) => k.doc_id))]);
       } else {
         const res = await api.search({
-          query,
+          query: effectiveQuery,
           jurisdiction_filter: jurisdictionFilter || null,
           matter_type_filter: matterTypeFilter || null,
           recency_filter: recencyFilter || null,
@@ -158,6 +172,7 @@ export default function SearchPage({ onPreview }) {
 
       <SearchPanel
         query={query} setQuery={setQuery}
+        attachedContext={attachedContext} onAttachedContextChange={setAttachedContext}
         jurisdictionFilter={jurisdictionFilter} setJurisdictionFilter={setJurisdictionFilter}
         matterTypeFilter={matterTypeFilter} setMatterTypeFilter={setMatterTypeFilter}
         recencyFilter={recencyFilter} setRecencyFilter={setRecencyFilter}

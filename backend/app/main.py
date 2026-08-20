@@ -17,6 +17,7 @@ from app.models import (
     DraftRequest,
     DraftResponse,
     DocumentApprovalRequest,
+    ExtractedTextResponse,
     IngestResult,
     LineageResponse,
     MatterSummary,
@@ -86,6 +87,22 @@ async def ingest_documents(files: list[UploadFile] = File(...), _user: CurrentUs
                 doc_id="", filename=f.filename, metadata=ingestion.DocumentMetadata(), status="error", error=str(e)
             ))
     return results
+
+
+@app.post("/api/extract-text", response_model=ExtractedTextResponse)
+async def extract_text(file: UploadFile = File(...), _user: CurrentUser = Depends(get_current_user)):
+    """
+    Text extraction only -- reuses the exact same extraction ingestion.py
+    uses for real uploads, but deliberately does NOT call the metadata LLM
+    and does NOT touch vectorstore at all. For attaching a document's text
+    as one-off search context (e.g. a lawyer's own case file) without it
+    becoming a permanent, browsable precedent in the library.
+    """
+    content = await file.read()
+    text = ingestion.extract_text(file.filename, content)
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="No extractable text found in file.")
+    return ExtractedTextResponse(filename=file.filename, text=text)
 
 
 @app.get("/api/documents", response_model=list[DocumentRecord])

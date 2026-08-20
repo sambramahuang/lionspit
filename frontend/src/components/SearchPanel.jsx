@@ -1,4 +1,13 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { api } from "../api.js";
+
+// Caps how much of an attached document's text gets folded into the
+// query -- consistent with ingestion.py's own 6000-char excerpt cap for
+// the metadata LLM. Long enough for a real fact pattern or case summary,
+// short enough to keep embedding cost/latency and the LLM relevance pass
+// bounded regardless of how long the source document actually is.
+const MAX_ATTACHED_CONTEXT_CHARS = 6000;
 
 // Hardcoded example queries grounded in documents actually in the seeded
 // corpus (case_documents/) -- rotated randomly instead of one static
@@ -48,6 +57,7 @@ const DOCUMENT_TYPE_OPTIONS = [
 
 export default function SearchPanel({
   query, setQuery,
+  attachedContext, onAttachedContextChange,
   jurisdictionFilter, setJurisdictionFilter,
   matterTypeFilter, setMatterTypeFilter,
   recencyFilter, setRecencyFilter,
@@ -57,6 +67,12 @@ export default function SearchPanel({
   mode, setMode,
   onSearch, busy,
 }) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [attaching, setAttaching] = useState(false);
+  const [attachError, setAttachError] = useState(null);
+  const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
+
   const updateWeight = (key, value) => {
     setWeights((prev) => ({ ...prev, [key]: parseFloat(value) }));
   };
@@ -72,6 +88,37 @@ export default function SearchPanel({
     () => pickRandom(mode === "clauses" ? CLAUSE_QUERY_EXAMPLES : DOCUMENT_QUERY_EXAMPLES),
     [mode]
   );
+
+  // Auto-grows with content (up to a scrollable cap in CSS) instead of a
+  // fixed-height box, so pasting in a page of case facts doesn't get
+  // squeezed into a one-line field -- reset to "auto" first or the box
+  // would only ever grow, never shrink back down after deleting text.
+  const autoResize = (el) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  const handleAttachClick = () => fileInputRef.current?.click();
+
+  const handleFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+    setAttachError(null);
+    setAttaching(true);
+    try {
+      const res = await api.extractText(file);
+      const text = res.text.length > MAX_ATTACHED_CONTEXT_CHARS
+        ? res.text.slice(0, MAX_ATTACHED_CONTEXT_CHARS) + "…"
+        : res.text;
+      onAttachedContextChange?.({ filename: res.filename, text });
+    } catch (err) {
+      setAttachError(err.message);
+    } finally {
+      setAttaching(false);
+    }
+  };
 
   return (
     <div className="card">
@@ -96,93 +143,159 @@ export default function SearchPanel({
             <circle cx="11" cy="11" r="7" />
             <path d="m21 21-4.3-4.3" />
           </svg>
-          <input
-            className="search-input"
+          <textarea
+            ref={textareaRef}
+            className="search-input search-input-expandable"
+            rows={1}
             placeholder={
               mode === "clauses"
                 ? `Describe the exact provision you need, e.g. "${placeholderExample}"`
-                : `Describe what you need — legal terms or plain English both work, e.g. "${placeholderExample}"`
+                : `Describe what you need — legal terms or plain English both work. Paste in as much context as you want (the facts of the matter you're working on, not just a short phrase), e.g. "${placeholderExample}"`
             }
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onSearch()}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              autoResize(e.target);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                onSearch();
+              }
+            }}
           />
         </div>
-        <button className="btn btn-primary" onClick={onSearch} disabled={busy || !query.trim()}>
+        <button className="btn btn-primary" onClick={onSearch} disabled={busy || (!query.trim() && !attachedContext)}>
           {busy ? "Searching..." : "Search"}
         </button>
       </div>
 
-      {mode === "documents" && (
-        <>
-          <div className="filters-row">
-            <input
-              className="filter-input"
-              placeholder="Jurisdiction filter (optional)"
-              value={jurisdictionFilter}
-              onChange={(e) => setJurisdictionFilter(e.target.value)}
-            />
-            <input
-              className="filter-input"
-              placeholder="Matter type filter (optional)"
-              value={matterTypeFilter}
-              onChange={(e) => setMatterTypeFilter(e.target.value)}
-            />
-          </div>
-
-          <div className="filter-checklists">
-            <fieldset className="filter-checklist">
-              <legend>Recency</legend>
-              {RECENCY_OPTIONS.map(([value, label]) => (
-                <label key={value}><input type="radio" name="recency" checked={recencyFilter === value} onChange={() => setRecencyFilter(value)} />{label}</label>
-              ))}
-              <label><input type="radio" name="recency" checked={!recencyFilter} onChange={() => setRecencyFilter("")} />Any time</label>
-            </fieldset>
-            <fieldset className="filter-checklist">
-              <legend>Status category</legend>
-              {STATUS_OPTIONS.map((value) => (
-                <label key={value}><input type="checkbox" checked={statusFilters.includes(value)} onChange={() => toggleFilter(setStatusFilters, value)} />{value}</label>
-              ))}
-            </fieldset>
-            <fieldset className="filter-checklist">
-              <legend>Document Type</legend>
-              {DOCUMENT_TYPE_OPTIONS.map((value) => (
-                <label key={value}><input type="checkbox" checked={documentTypeFilters.includes(value)} onChange={() => toggleFilter(setDocumentTypeFilters, value)} />{value}</label>
-              ))}
-            </fieldset>
-          </div>
-
-        </>
-      )}
-
-      <div className="section-label" style={{ margin: "18px 0 4px", fontSize: 16, color: "black" }}>
-        Customize weights
-      </div>
-      <div className="weights-panel">
-        {Object.entries(weights).filter(([key]) => key !== "recency").map(([key, value]) => (
-          <div className="weight-row" key={key}>
-            <label>
-              <span>{WEIGHT_LABELS[key] || key}</span>
-              <span className="weight-value">{value.toFixed(2)}</span>
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={value}
-              onChange={(e) => updateWeight(key, e.target.value)}
-            />
-          </div>
-        ))}
+      <div className="search-attach-row">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".txt,.docx,.pdf"
+          style={{ display: "none" }}
+          onChange={handleFileSelected}
+        />
+        {!attachedContext && (
+          <button
+            type="button"
+            className="btn btn-ghost search-attach-btn"
+            onClick={handleAttachClick}
+            disabled={attaching}
+          >
+            {attaching ? "Reading document..." : "📎 Attach a document for context"}
+          </button>
+        )}
+        {attachedContext && (
+          <span className="search-attach-chip">
+            📎 {attachedContext.filename}
+            <button
+              type="button"
+              aria-label="Remove attached document"
+              onClick={() => onAttachedContextChange?.(null)}
+            >
+              ×
+            </button>
+          </span>
+        )}
+        {attachError && <span className="reason-text" style={{ margin: 0 }}>{attachError}</span>}
       </div>
 
-      {mode === "clauses" && (
-        <p style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "14px 0 0" }}>
-          Matches individual clauses across every document, not whole documents — useful when you
-          know the provision you need but not which agreement it's in.
-        </p>
-      )}
+      <button
+        type="button"
+        className="btn btn-ghost search-advanced-toggle"
+        onClick={() => setShowAdvanced((v) => !v)}
+        aria-expanded={showAdvanced}
+      >
+        {showAdvanced ? "▾" : "▸"} Filters &amp; weights
+      </button>
+
+      <AnimatePresence initial={false}>
+        {showAdvanced && (
+          <motion.div
+            key="advanced"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            style={{ overflow: "hidden" }}
+          >
+            <div style={{ paddingTop: 14 }}>
+              {mode === "documents" && (
+                <>
+                  <div className="filters-row">
+                    <input
+                      className="filter-input"
+                      placeholder="Jurisdiction filter (optional)"
+                      value={jurisdictionFilter}
+                      onChange={(e) => setJurisdictionFilter(e.target.value)}
+                    />
+                    <input
+                      className="filter-input"
+                      placeholder="Matter type filter (optional)"
+                      value={matterTypeFilter}
+                      onChange={(e) => setMatterTypeFilter(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="filter-checklists">
+                    <fieldset className="filter-checklist">
+                      <legend>Recency</legend>
+                      {RECENCY_OPTIONS.map(([value, label]) => (
+                        <label key={value}><input type="radio" name="recency" checked={recencyFilter === value} onChange={() => setRecencyFilter(value)} />{label}</label>
+                      ))}
+                      <label><input type="radio" name="recency" checked={!recencyFilter} onChange={() => setRecencyFilter("")} />Any time</label>
+                    </fieldset>
+                    <fieldset className="filter-checklist">
+                      <legend>Status category</legend>
+                      {STATUS_OPTIONS.map((value) => (
+                        <label key={value}><input type="checkbox" checked={statusFilters.includes(value)} onChange={() => toggleFilter(setStatusFilters, value)} />{value}</label>
+                      ))}
+                    </fieldset>
+                    <fieldset className="filter-checklist">
+                      <legend>Document Type</legend>
+                      {DOCUMENT_TYPE_OPTIONS.map((value) => (
+                        <label key={value}><input type="checkbox" checked={documentTypeFilters.includes(value)} onChange={() => toggleFilter(setDocumentTypeFilters, value)} />{value}</label>
+                      ))}
+                    </fieldset>
+                  </div>
+                </>
+              )}
+
+              <div className="section-label" style={{ margin: "18px 0 4px", fontSize: 16, color: "black" }}>
+                Customize weights
+              </div>
+              <div className="weights-panel">
+                {Object.entries(weights).filter(([key]) => key !== "recency").map(([key, value]) => (
+                  <div className="weight-row" key={key}>
+                    <label>
+                      <span>{WEIGHT_LABELS[key] || key}</span>
+                      <span className="weight-value">{value.toFixed(2)}</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={value}
+                      onChange={(e) => updateWeight(key, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {mode === "clauses" && (
+                <p style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "14px 0 0" }}>
+                  Matches individual clauses across every document, not whole documents — useful when you
+                  know the provision you need but not which agreement it's in.
+                </p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

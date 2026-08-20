@@ -56,6 +56,11 @@ class DocumentApprovalRequest(BaseModel):
     note: str | None = None
 
 
+class ExtractedTextResponse(BaseModel):
+    filename: str
+    text: str
+
+
 class IngestResult(BaseModel):
     doc_id: str
     filename: str

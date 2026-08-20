@@ -816,16 +816,22 @@ main.content {
   margin-bottom: 6px;
 }
 
+.search-advanced-toggle {
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
 .search-input-wrap {
   position: relative;
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .search-icon {
   position: absolute;
   left: 14px;
+  top: 16px;
   width: 17px;
   height: 17px;
   pointer-events: none;
@@ -848,6 +854,51 @@ main.content {
   outline: none;
   border-color: var(--ink-softer);
   box-shadow: 0 0 0 4px var(--accent-bg);
+}
+
+/* Auto-grows via JS (see SearchPanel's autoResize) up to this cap, then
+   scrolls internally -- a lawyer pasting in pages of case facts shouldn't
+   be able to push the search button off-screen. */
+.search-input-expandable {
+  resize: none;
+  overflow-y: auto;
+  max-height: 320px;
+  line-height: 1.5;
+  font-family: var(--font-ui);
+}
+
+.search-attach-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.search-attach-btn {
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+.search-attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  background: var(--accent-bg);
+  color: var(--ink);
+  padding: 5px 6px 5px 10px;
+  border-radius: 999px;
+}
+
+.search-attach-chip button {
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
 }
 
 .filter-checklists {
