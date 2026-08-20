@@ -132,9 +132,19 @@ export default function MattersView({ isPartner, refreshKey }) {
           <tbody>
             {matters.map((m) => {
               const unresolvedConflict = m.conflict && !m.conflict.acknowledged;
+              const rowClass = m.access_restricted
+                ? "doc-row-restricted"
+                : unresolvedConflict ? "matter-row-conflict" : "";
               return (
-                <tr key={m.matter_key} className={unresolvedConflict ? "matter-row-conflict" : ""}>
-                  <td>{m.label}</td>
+                <tr key={m.matter_key} className={rowClass}>
+                  <td>
+                    {m.label}
+                    {m.access_restricted && (
+                      <span className="badge badge-restricted" style={{ marginLeft: 6 }}>
+                        access restricted
+                      </span>
+                    )}
+                  </td>
                   <td className="mono">{m.document_count}</td>
                   <td>
                     {isPartner ? (

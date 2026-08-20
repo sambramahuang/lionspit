@@ -50,8 +50,11 @@ export default function ResultCard({
           <button
             type="button"
             className="btn btn-ghost preview-btn"
+            disabled={tone === "restricted"}
+            title={tone === "restricted" ? reason : undefined}
             onClick={(event) => {
               event.stopPropagation();
+              if (tone === "restricted") return;
               onPreview?.(item.doc_id);
             }}
           >

@@ -93,6 +93,26 @@ def query(query_text: str, n_results: int = 8):
     return {"ids": [ids], "documents": [docs], "metadatas": [metas], "distances": [distances]}
 
 
+def nearest_neighbors(doc_id: str, limit: int = 5):
+    """Other documents ranked by embedding similarity to `doc_id`'s own
+    already-stored embedding -- reuses the embedding computed at ingest
+    time (no extra embed_text API call) and stays cheap Postgres-side even
+    as the corpus grows. Used by matters.resolve_cluster_keys' content
+    -based fallback for documents with no usable structured matter signal."""
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT b.doc_id, a.embedding <=> b.embedding AS distance
+            FROM documents a, documents b
+            WHERE a.doc_id = %s AND b.doc_id != a.doc_id
+            ORDER BY distance
+            LIMIT %s
+            """,
+            (doc_id, limit),
+        ).fetchall()
+    return [{"doc_id": r[0], "distance": r[1]} for r in rows]
+
+
 def get_by_id(doc_id: str):
     with _connect() as conn:
         row = conn.execute(

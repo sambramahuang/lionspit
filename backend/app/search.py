@@ -2,17 +2,23 @@
 Search + ranking + rejection reasoning.
 
 Flow (mirrors the demo script):
-  1. Pull a candidate pool via semantic search (Chroma).
-  2. Split off anything the viewer isn't cleared to see (ethical wall).
-  3. Score the rest on similarity + recency + frequency + partner
-     approval + jurisdiction match.
+  1. Pull a candidate pool via semantic search (Chroma), then split off
+     anything the viewer isn't cleared to see (ethical wall) -- scored
+     alongside the visible pool (step 3) but not yet disclosed.
+  2. Apply hard filters (jurisdiction/matter type/recency/status/document
+     type) to both pools identically.
+  3. Score the visible pool on similarity + recency + frequency + partner
+     approval + jurisdiction match; score the walled pool the same way, on
+     the same scale, without it skewing the visible pool's own scoring.
   4. Detect same-matter clusters and flag clearly superseded / non
      -approved documents as "rejected", with a plain-English reason.
   5. Have the LLM judge true relevance on what's left; drop anything it
      judges not genuinely relevant into "rejected" too.
   6. Whatever survives becomes "kept" (anything scoring within a
      threshold of the top result, capped) and "other_candidates" (the
-     rest) -- both filterable/comparable in the UI.
+     rest) -- both filterable/comparable in the UI. A walled candidate
+     only surfaces as "access restricted" if it clears that same
+     threshold -- genuinely relevant, not just incidentally similar.
 """
 
 from collections import defaultdict
@@ -141,6 +147,61 @@ def _normalize(values: dict) -> dict:
     return {k: (v - lo) / (hi - lo) for k, v in values.items()}
 
 
+def _normalize_against(value: float, reference: list) -> float:
+    """Same min-max formula as _normalize, but scored against someone
+    else's reference range instead of its own -- used to score a walled
+    candidate on the same 0..1 scale as the visible pool without letting
+    it skew the visible pool's own normalization (see its call site)."""
+    if not reference:
+        return 0.5
+    lo, hi = min(reference), max(reference)
+    if hi == lo:
+        return 0.5
+    return max(0.0, min(1.0, (value - lo) / (hi - lo)))
+
+
+def _weighted_score(breakdown: dict, w: RankingWeights) -> float:
+    """The composite-score formula, factored out so it's computed exactly
+    the same way for a visible candidate (Step 3) and a walled one (Step
+    1b) -- the whole point of scoring walled candidates at all is to hold
+    them to the identical bar, not an approximation of it."""
+    total_weight = (
+        w.similarity + w.recency + w.frequency + w.partner_approval + w.jurisdiction_match
+    ) or 1.0
+    return (
+        breakdown["similarity"] * w.similarity
+        + breakdown["recency"] * w.recency
+        + breakdown["frequency"] * w.frequency
+        + breakdown["partner_approval"] * w.partner_approval
+        + breakdown["jurisdiction_match"] * w.jurisdiction_match
+    ) / total_weight
+
+
+def _apply_hard_filters(pool: list, req) -> list:
+    """Jurisdiction/matter-type filters are soft (fall back to unfiltered
+    if they'd eliminate everything -- `or pool`); recency/status/document
+    -type filters are hard. Factored out so a walled candidate is judged
+    against the exact same filters a visible one is, not a re-typed
+    approximation of them (see run_search's two call sites)."""
+    if req.jurisdiction_filter:
+        pool = [
+            c for c in pool
+            if req.jurisdiction_filter.lower() in str(c["meta"].get("jurisdiction", "")).lower()
+        ] or pool
+    if req.matter_type_filter:
+        pool = [
+            c for c in pool
+            if req.matter_type_filter.lower() in str(c["meta"].get("matter_type", "")).lower()
+        ] or pool
+    if req.recency_filter:
+        pool = [c for c in pool if _matches_recency(c["meta"].get("document_date"), req.recency_filter)]
+    if req.is_draft_or_model_filters:
+        pool = [c for c in pool if c["meta"].get("is_draft_or_model") in req.is_draft_or_model_filters]
+    if req.document_type_filters:
+        pool = [c for c in pool if c["meta"].get("document_type") in req.document_type_filters]
+    return pool
+
+
 def run_search(req, user_email: str) -> SearchResponse:
     raw = vectorstore.query(req.query, n_results=max(req.candidate_pool, 12))
     ids = raw["ids"][0]
@@ -161,55 +222,21 @@ def run_search(req, user_email: str) -> SearchResponse:
         )
 
     # --- Step 1: matter-level ethical wall ------------------------------
+    # Walled candidates aren't decided here -- only split out. Whether one
+    # is worth disclosing at all (see Step 3b) needs its score, which isn't
+    # computed until Step 3, and needs to be judged on the same scale as
+    # the visible pool.
     walls = matters.load_walls()
-    access_restricted = []
-    visible = []
+    blocked, visible = [], []
     for c in candidates:
-        if matters.is_blocked(c["meta"], user_email, walls):
-            access_restricted.append(
-                RejectedItem(
-                    doc_id=c["doc_id"],
-                    filename=c["meta"].get("filename", c["doc_id"]),
-                    metadata=DocumentMetadata(**c["meta"]),
-                    reason="This matter is walled off. You don't have access to view it.",
-                )
-            )
-        else:
-            visible.append(c)
+        (blocked if matters.is_blocked(c["meta"], user_email, walls) else visible).append(c)
 
     # --- Step 2: optional hard filters (jurisdiction / matter type) ----
-    if req.jurisdiction_filter:
-        visible = [
-            c
-            for c in visible
-            if req.jurisdiction_filter.lower()
-            in str(c["meta"].get("jurisdiction", "")).lower()
-        ] or visible
-    if req.matter_type_filter:
-        visible = [
-            c
-            for c in visible
-            if req.matter_type_filter.lower()
-            in str(c["meta"].get("matter_type", "")).lower()
-        ] or visible
-    if req.recency_filter:
-        visible = [
-            c
-            for c in visible
-            if _matches_recency(c["meta"].get("document_date"), req.recency_filter)
-        ]
-    if req.is_draft_or_model_filters:
-        visible = [
-            c
-            for c in visible
-            if c["meta"].get("is_draft_or_model") in req.is_draft_or_model_filters
-        ]
-    if req.document_type_filters:
-        visible = [
-            c
-            for c in visible
-            if c["meta"].get("document_type") in req.document_type_filters
-        ]
+    # Applied to both pools identically -- a walled candidate that doesn't
+    # even match the stated jurisdiction/date/type filters has no more
+    # business surfacing than a visible one that fails the same filters.
+    visible = _apply_hard_filters(visible, req)
+    blocked = _apply_hard_filters(blocked, req)
 
     visible = visible[: max(req.candidate_pool, 1)]
 
@@ -224,49 +251,60 @@ def run_search(req, user_email: str) -> SearchResponse:
     freq_norm = _normalize(freq_raw)
     w: RankingWeights = req.weights
 
+    def _jurisdiction_score(meta: dict) -> float:
+        if not req.jurisdiction_filter:
+            return 0.5  # neutral when no filter is applied
+        return (
+            1.0
+            if req.jurisdiction_filter.lower() in str(meta.get("jurisdiction", "")).lower()
+            else 0.0
+        )
+
     for c in visible:
         meta = c["meta"]
-        partner_score = 1.0 if meta.get("partner_approved") is True else 0.0
-        if req.jurisdiction_filter:
-            jurisdiction_score = (
-                1.0
-                if req.jurisdiction_filter.lower()
-                in str(meta.get("jurisdiction", "")).lower()
-                else 0.0
-            )
-        else:
-            jurisdiction_score = 0.5  # neutral when no filter is applied
-
         breakdown = {
             "similarity": round(c["similarity"], 3),
             "recency": round(recency_norm.get(c["doc_id"], 0.5), 3),
             "frequency": round(freq_norm.get(c["doc_id"], 0.0), 3),
-            "partner_approval": partner_score,
-            "jurisdiction_match": jurisdiction_score,
+            "partner_approval": 1.0 if meta.get("partner_approved") is True else 0.0,
+            "jurisdiction_match": _jurisdiction_score(meta),
         }
-        total_weight = (
-            w.similarity
-            + w.recency
-            + w.frequency
-            + w.partner_approval
-            + w.jurisdiction_match
-        ) or 1.0
-        score = (
-            breakdown["similarity"] * w.similarity
-            + breakdown["recency"] * w.recency
-            + breakdown["frequency"] * w.frequency
-            + breakdown["partner_approval"] * w.partner_approval
-            + breakdown["jurisdiction_match"] * w.jurisdiction_match
-        ) / total_weight
-        c["score"] = round(score, 4)
+        c["score"] = round(_weighted_score(breakdown, w), 4)
         c["breakdown"] = breakdown
 
     visible.sort(key=lambda c: c["score"], reverse=True)
 
+    # --- Step 3b: score walled candidates on the same scale -------------
+    # Scored (never shown) against the visible pool's own recency/frequency
+    # range via _normalize_against, rather than folded into the same
+    # _normalize() call above -- a walled candidate's raw values must not
+    # be able to widen or shift the range visible results are scored
+    # against. Whether one clears the bar is decided once top_score exists
+    # (Step 6b), using the identical RELATIVE_KEEP_THRESHOLD "kept" does.
+    recency_ref = list(recency_raw.values())
+    freq_ref = list(freq_raw.values())
+    for c in blocked:
+        meta = c["meta"]
+        d = _parse_date(meta.get("document_date"))
+        breakdown = {
+            "similarity": round(c["similarity"], 3),
+            "recency": round(_normalize_against(d.timestamp() if d else 0, recency_ref), 3),
+            "frequency": round(_normalize_against(float(meta.get("usage_count", 0) or 0), freq_ref), 3),
+            "partner_approval": 1.0 if meta.get("partner_approved") is True else 0.0,
+            "jurisdiction_match": _jurisdiction_score(meta),
+        }
+        c["score"] = round(_weighted_score(breakdown, w), 4)
+
     # --- Step 4: detect clearly superseded / non-approved documents ----
+    # resolve_cluster_keys (not a plain per-item cluster_key call) so a
+    # document with no usable matter_reference or party names still has a
+    # shot at being compared against its real superseding/superseded
+    # version via content similarity, instead of always sitting alone in a
+    # group of one where supersession can never fire.
+    resolved_keys = matters.resolve_cluster_keys([(c["doc_id"], c["meta"]) for c in visible])
     clusters = defaultdict(list)
     for c in visible:
-        clusters[matters.cluster_key(c["meta"])].append(c)
+        clusters[resolved_keys[c["doc_id"]]].append(c)
 
     rejected_ids = set()
     rejected_items = []
@@ -361,6 +399,29 @@ def run_search(req, user_email: str) -> SearchResponse:
     kept_raw = [c for c in remaining if c["score"] >= threshold][:max_kept]
     kept_ids = {c["doc_id"] for c in kept_raw}
     other_raw = [c for c in remaining if c["doc_id"] not in kept_ids]
+
+    # --- Step 6b: only disclose a walled candidate if it clears the same
+    # bar a visible result has to -- otherwise a walled document that's
+    # only an incidental, weak semantic match would surface on every query
+    # that so much as brushes its topic, which isn't "this could genuinely
+    # help you, go ask a partner," it's noise. top_score == 0 means nothing
+    # visible scored at all (e.g. a hard filter emptied the pool), which
+    # leaves no legitimate bar to judge a walled candidate against, so none
+    # qualify rather than all of them defaulting to "relevant."
+    access_restricted = (
+        [
+            RejectedItem(
+                doc_id=c["doc_id"],
+                filename=c["meta"].get("filename", c["doc_id"]),
+                metadata=DocumentMetadata(**c["meta"]),
+                reason="This matter is walled off. You don't have access to view it.",
+            )
+            for c in blocked
+            if c["score"] >= threshold
+        ]
+        if top_score > 0
+        else []
+    )
 
     def to_result_item(c):
         return SearchResultItem(
@@ -555,9 +616,16 @@ def compute_lineage(user_email: str) -> LineageResponse:
         if not matters.is_blocked(r["metadata"], user_email, walls)
     ]
 
+    # resolve_cluster_keys, not a plain per-record cluster_key call, so a
+    # document with no usable matter_reference or party names can still
+    # join its real matter's lineage cluster via content similarity rather
+    # than always landing in "standalone" (see its docstring). is_blocked
+    # above already ran on the plain structural key, per-document, before
+    # this -- wall enforcement is untouched by the content-based fallback.
+    resolved_keys = matters.resolve_cluster_keys([(r["doc_id"], r["metadata"]) for r in records])
     grouped = defaultdict(list)
     for r in records:
-        grouped[matters.cluster_key(r["metadata"])].append(r)
+        grouped[resolved_keys[r["doc_id"]]].append(r)
 
     clusters = []
     standalone = []

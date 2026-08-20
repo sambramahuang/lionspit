@@ -807,6 +807,13 @@ main.content {
 .matter-row-conflict { background: var(--flag-red-bg); }
 .doc-table tr.matter-row-conflict:hover td { background: var(--flag-red-bg); }
 
+/* A walled document is still listed (existence isn't hidden -- see
+   main.py's list_documents), just visibly locked -- same lock-purple
+   family as .badge-restricted rather than the conflict row's red, since
+   this isn't a problem to resolve, just access the viewer doesn't have. */
+.doc-row-restricted { background: var(--flag-lock-bg); }
+.doc-table tr.doc-row-restricted:hover td { background: var(--flag-lock-bg); }
+
 /* ---------------------------------------------------------------------
    Search panel
 ------------------------------------------------------------------------ */

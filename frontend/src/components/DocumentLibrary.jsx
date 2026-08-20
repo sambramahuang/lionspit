@@ -211,9 +211,16 @@ export default function DocumentLibrary({ refreshKey, onChanged, onPreview, isPa
             </thead>
             <tbody>
               {filtered.map((d) => (
-                <tr key={d.doc_id}>
+                <tr key={d.doc_id} className={d.access_restricted ? "doc-row-restricted" : ""}>
                   <td>
-                    <div className="doc-filename">{d.filename}</div>
+                    <div className="doc-filename">
+                      {d.filename}
+                      {d.access_restricted && (
+                        <span className="badge badge-restricted" style={{ marginLeft: 6 }} title={d.restricted_reason}>
+                          walled
+                        </span>
+                      )}
+                    </div>
                     <div className="mono" style={{ color: "var(--text-muted)" }}>{d.doc_id}</div>
                   </td>
                   <td style={{ fontSize: 12.5 }}>
@@ -256,11 +263,17 @@ export default function DocumentLibrary({ refreshKey, onChanged, onPreview, isPa
                       <button
                         type="button"
                         className="btn btn-ghost preview-btn"
+                        disabled={d.access_restricted}
+                        title={d.access_restricted ? d.restricted_reason : undefined}
                         onClick={() => onPreview?.(d.doc_id)}
                       >
                         Preview
                       </button>
-                      {isPartner && (
+                      {/* Approve/delete stay hidden for a restricted row even for a
+                          partner -- being walled off from a matter blocks acting on
+                          its documents too, same rule the backend enforces (see
+                          matters.is_blocked's docstring). */}
+                      {isPartner && !d.access_restricted && (
                         <>
                           <button
                             type="button"

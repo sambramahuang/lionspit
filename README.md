@@ -248,11 +248,24 @@ whatever email you put in `PARTNER_EMAILS` to get partner access (the
   the same file — an explicit reference number is a stronger, type-agnostic
   signal than any inferred combination of fields. Falls back to the
   *unordered set* of `client_name` + `counterparty_name` plus `matter_type`
-  + `jurisdiction` when no reference is stated. Walling a matter sets an
-  allow-list of emails; everyone else is blocked from that matter's
-  documents in search, the library, lineage, and drafting alike — see
-  `matters.is_blocked()`, the single check every one of those code paths
-  goes through.
+  + `jurisdiction` when no reference is stated — party names are compared
+  entity-suffix-insensitively (`matters._normalize_party_name`), so "Alpha
+  Robotics Pte Ltd" and a document that just says "Alpha Robotics" still
+  count as the same party. For the rare document with neither a reference
+  number nor a usable party name — a genuinely messy upload — search
+  ranking and the lineage graph fall back one step further to
+  `matters.resolve_cluster_keys`, which compares the document's embedding
+  against the rest of the corpus and merges it into whichever existing
+  matter it's a near-duplicate of, so a matter isn't permanently fractured
+  just because one file's metadata extraction came back empty. This
+  content-based fallback deliberately isn't used by `is_blocked()` itself —
+  wall enforcement always stays on the plain structural key, so a fuzzy
+  content match can never change what a document is judged to be for
+  access-control purposes, only for grouping in search/lineage. Walling a
+  matter sets an allow-list of emails; everyone else is blocked from that
+  matter's documents in search, the library, lineage, and drafting alike —
+  see `matters.is_blocked()`, the single check every one of those code
+  paths goes through.
 - **Drafting** (`backend/app/drafting.py`): the LLM drafts strictly from
   the selected source documents, inserting a `[[n]]` citation marker after
   every clause it draws on, and a `[[GAP: ...]]` marker instead of

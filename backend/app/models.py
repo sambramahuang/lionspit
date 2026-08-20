@@ -48,6 +48,14 @@ class DocumentRecord(BaseModel):
     metadata: DocumentMetadata
     usage_count: int = 0
     text_preview: str = ""
+    # True when the caller is walled off from this document's matter. The
+    # record still appears in /api/documents -- existence isn't a secret,
+    # only content is -- but text_preview is withheld, and the frontend
+    # disables preview/approve/delete for it. get_document/delete_document/
+    # set_document_approval independently re-check the wall server-side, so
+    # this flag is a UI signal only, never the actual enforcement point.
+    access_restricted: bool = False
+    restricted_reason: str | None = None
 
 
 class DocumentApprovalRequest(BaseModel):
@@ -227,6 +235,11 @@ class MatterSummary(BaseModel):
     document_count: int
     wall: MatterWallInfo
     conflict: ConflictFlag | None = None
+    # True when the caller is blocked from this matter and isn't a partner --
+    # label/allowed_emails/conflict are already stripped to generic values
+    # by matters.summarize() in that case; this just tells the frontend to
+    # render it as locked rather than as an editable/detailed row.
+    access_restricted: bool = False
 
 
 class DraftRequest(BaseModel):
