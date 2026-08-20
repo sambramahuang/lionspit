@@ -145,13 +145,25 @@ function buildAppendixParagraphs(draft) {
   }
   if (draft.gaps?.length) {
     paras.push([{ text: "GAPS FLAGGED, NOT INVENTED", bold: true }]);
-    draft.gaps.forEach((g) => paras.push([{ text: `- ${g}`, bold: false, kind: "gap" }]));
+    draft.gaps.forEach((g) => paras.push(splitBoldRuns(`- ${g}`, { kind: "gap" })));
   }
   if (draft.flagged_uncited?.length) {
     paras.push([{ text: "UNCITED CLAUSES -- REVIEW BEFORE RELYING ON THESE", bold: true }]);
-    draft.flagged_uncited.forEach((c) => paras.push([{ text: `- ${c}`, bold: false, kind: "uncited" }]));
+    draft.flagged_uncited.forEach((c) => paras.push(splitBoldRuns(`- ${c}`, { kind: "uncited" })));
   }
   return paras;
+}
+
+/** Gaps/uncited-clause text comes straight from the model, which reaches
+ * for **bold** the same way it does in the draft body -- split it into
+ * bold/plain runs (all tagged with the same `kind`, so the red warning
+ * color stays consistent across the whole line) instead of leaking
+ * literal asterisks into exported files. */
+function splitBoldRuns(text, extra = {}) {
+  return text
+    .split(/\*\*(.+?)\*\*/g)
+    .map((part, i) => ({ text: part, bold: i % 2 === 1, ...extra }))
+    .filter((r) => r.text !== "");
 }
 
 function triggerDownload(blob, filename) {

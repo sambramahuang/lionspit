@@ -43,6 +43,7 @@ export default function SearchPage({ onPreview }) {
   const [clauseResult, setClauseResult] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [showOther, setShowOther] = useState(false);
+  const [showRejected, setShowRejected] = useState(false);
   const [highlighted, setHighlighted] = useState(null);
 
   const cardRefs = useRef({});
@@ -150,6 +151,7 @@ export default function SearchPage({ onPreview }) {
 
   const jumpToSource = (docId) => {
     setShowOther(true);
+    setShowRejected(true);
     setHighlighted(docId);
     const node = cardRefs.current[docId];
     if (node) node.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -247,48 +249,6 @@ export default function SearchPage({ onPreview }) {
             )}
           </div>
 
-          {result.rejected.length > 0 && (
-            <>
-              <div className="section-label">
-                Rejected <span className="count">{result.rejected.length}</span>
-              </div>
-              <p style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "0 0 10px" }}>
-                Flagged automatically — superseded, not partner-approved, or not relevant to this
-                query. Nothing here is ever deleted or hidden from you: check the box to include
-                one in the draft anyway if you know better than the flag.
-              </p>
-              <div className="result-grid">
-                {result.rejected.map((item) => (
-                  <ResultCard
-                    key={item.doc_id}
-                    item={item}
-                    tone="rejected"
-                    reason={item.reason}
-                    selectable
-                    selected={selectedIds.includes(item.doc_id)}
-                    onToggle={toggleSelect}
-                    onPreview={previewAndHighlight}
-                    sourceRef={(el) => (cardRefs.current[item.doc_id] = el)}
-                    highlighted={highlighted === item.doc_id}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-
-          {result.access_restricted.length > 0 && (
-            <>
-              <div className="section-label">
-                Access restricted <span className="count">{result.access_restricted.length}</span>
-              </div>
-              <div className="result-grid">
-                {result.access_restricted.map((item) => (
-                  <ResultCard key={item.doc_id} item={item} tone="restricted" reason={item.reason} />
-                ))}
-              </div>
-            </>
-          )}
-
           {result.other_candidates.length > 0 && (
             <>
               <div
@@ -296,7 +256,8 @@ export default function SearchPage({ onPreview }) {
                 style={{ cursor: "pointer" }}
                 onClick={() => setShowOther((s) => !s)}
               >
-                {showOther ? "▾" : "▸"} Other candidates considered
+                Other candidates considered
+                <span style={{ fontSize: 15 }}>{showOther ? "▾" : "▸"}</span>
                 <span className="count">{result.other_candidates.length}</span>
               </div>
               {showOther && (
@@ -317,6 +278,58 @@ export default function SearchPage({ onPreview }) {
                   ))}
                 </div>
               )}
+            </>
+          )}
+
+          {result.rejected.length > 0 && (
+            <>
+              <div
+                className="section-label"
+                style={{ cursor: "pointer" }}
+                onClick={() => setShowRejected((s) => !s)}
+              >
+                Rejected
+                <span style={{ fontSize: 15 }}>{showRejected ? "▾" : "▸"}</span>
+                <span className="count">{result.rejected.length}</span>
+              </div>
+              {showRejected && (
+                <>
+                  <p style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "0 0 10px" }}>
+                    Flagged automatically — superseded, not partner-approved, or not relevant to
+                    this query. Nothing here is ever deleted or hidden from you: check the box to
+                    include one in the draft anyway if you know better than the flag.
+                  </p>
+                  <div className="result-grid">
+                    {result.rejected.map((item) => (
+                      <ResultCard
+                        key={item.doc_id}
+                        item={item}
+                        tone="rejected"
+                        reason={item.reason}
+                        selectable
+                        selected={selectedIds.includes(item.doc_id)}
+                        onToggle={toggleSelect}
+                        onPreview={previewAndHighlight}
+                        sourceRef={(el) => (cardRefs.current[item.doc_id] = el)}
+                        highlighted={highlighted === item.doc_id}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {result.access_restricted.length > 0 && (
+            <>
+              <div className="section-label">
+                Access restricted <span className="count">{result.access_restricted.length}</span>
+              </div>
+              <div className="result-grid">
+                {result.access_restricted.map((item) => (
+                  <ResultCard key={item.doc_id} item={item} tone="restricted" reason={item.reason} />
+                ))}
+              </div>
             </>
           )}
 

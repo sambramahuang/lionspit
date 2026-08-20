@@ -2,6 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { renderDraftHtml, downloadDraftTxt, downloadDraftDocx, downloadDraftPdf } from "../utils/draftExport.js";
 
+/** The model reaches for **bold** in gap/uncited-clause notes the same
+ * way it does in the draft body itself -- render it as real bold there
+ * too instead of leaving literal asterisks on screen. */
+function renderBold(text) {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  return parts.map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part));
+}
+
 /** Turns a query into a filesystem-safe stem for downloaded filenames --
  * falls back to "draft" for an empty/punctuation-only query. */
 function slugify(text) {
@@ -154,7 +162,7 @@ export default function DraftView({ query, selectedDocIds, onCiteClick }) {
               <div className="card" style={{ padding: "12px 14px" }}>
                 <div className="section-label" style={{ margin: "0 0 6px" }}>Gaps flagged, not invented</div>
                 <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12.5 }}>
-                  {draft.gaps.map((g, i) => <li key={i}>{g}</li>)}
+                  {draft.gaps.map((g, i) => <li key={i}>{renderBold(g)}</li>)}
                 </ul>
               </div>
             )}
@@ -168,7 +176,7 @@ export default function DraftView({ query, selectedDocIds, onCiteClick }) {
                   a verified precedent. Review before relying on these.
                 </p>
                 <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12.5 }}>
-                  {draft.flagged_uncited.map((c, i) => <li key={i}>{c}</li>)}
+                  {draft.flagged_uncited.map((c, i) => <li key={i}>{renderBold(c)}</li>)}
                 </ul>
               </div>
             )}
