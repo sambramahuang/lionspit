@@ -12,15 +12,24 @@ import { api } from "../api.js";
 // wide instead of one node per document, so it doesn't blow past the page
 // width the way a flat one-row-per-document layout does once a matter has
 // more than 3-4 documents.
-// Sized so the worst real case -- a 3-hop version chain (draft -> redlined
-// -> final) plus a related-documents column -- still fits inside
-// main.content's max-width (1180px) minus its own padding and
-// .lineage-cluster's padding on top of that (effective ~1080px budget).
+// Sized so the common case -- a 3-hop version chain (draft -> redlined ->
+// final) plus a related-documents column -- fits inside main.content's
+// max-width (1180px) minus its own padding and .lineage-cluster's padding
+// on top of that (effective ~1080px budget) at 1:1 scale. Matters with a
+// longer chain than that are scaled down as a whole (see `scale` below)
+// rather than left to overflow into a horizontal scrollbar.
 const NODE_W = 200;
 const NODE_H = 78;
 const COL_GAP = 60;
 const ROW_GAP = 16;
 const ROW_H = NODE_H + ROW_GAP;
+const DIAGRAM_BUDGET_W = 1080;
+// Must match .lineage-diagram's padding-top in styles.css (reserves room
+// for the "current"/"superseded" badges, which poke above the topmost
+// node via a negative `top` offset). box-sizing is border-box project-wide,
+// so this has to be added back into the height set below or that padding
+// eats into the content box and clips the diagram's bottom edge instead.
+const DIAGRAM_PADDING_TOP = 12;
 
 function LineageNodeCard({ node, x, y, current, superseded, onPreview }) {
   const m = node.metadata || {};
@@ -81,6 +90,7 @@ function ClusterDiagram({ cluster, onPreview }) {
   const svgHeight = Math.max(relatedNodes.length * ROW_H, NODE_H);
   const svgWidth = chainStartX + chainNodes.length * NODE_W + Math.max(chainNodes.length - 1, 0) * COL_GAP;
   const currentX = chainStartX + (chainNodes.length - 1) * (NODE_W + COL_GAP);
+  const scale = svgWidth > DIAGRAM_BUDGET_W ? DIAGRAM_BUDGET_W / svgWidth : 1;
 
   return (
     <div className="lineage-cluster">
@@ -88,70 +98,72 @@ function ClusterDiagram({ cluster, onPreview }) {
         {cluster.label} <span className="count">{cluster.nodes.length}</span>
       </div>
 
-      <div className="lineage-diagram" style={{ height: svgHeight, minWidth: svgWidth }}>
-        <svg width={svgWidth} height={svgHeight} className="lineage-svg">
-          <defs>
-            <marker id={`arrow-${cluster.key}`} markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-              <path d="M0,0 L6,3 L0,6 Z" fill="var(--ink)" />
-            </marker>
-          </defs>
+      <div className="lineage-diagram" style={{ height: svgHeight * scale + DIAGRAM_PADDING_TOP }}>
+        <div style={{ width: svgWidth, height: svgHeight, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+          <svg width={svgWidth} height={svgHeight} className="lineage-svg">
+            <defs>
+              <marker id={`arrow-${cluster.key}`} markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--ink)" />
+              </marker>
+            </defs>
 
-          {/* Solid links: consecutive members of the same document's own version chain. */}
-          {chainNodes.slice(1).map((node, i) => {
-            const fromX = chainStartX + i * (NODE_W + COL_GAP) + NODE_W;
-            const toX = chainStartX + (i + 1) * (NODE_W + COL_GAP);
-            return (
-              <path
-                key={`chain-${node.doc_id}`}
-                d={`M ${fromX} ${chainY + NODE_H / 2} L ${toX - 6} ${chainY + NODE_H / 2}`}
-                stroke="var(--rule)"
-                strokeWidth="1.5"
-                fill="none"
-                markerEnd={`url(#arrow-${cluster.key})`}
-              />
-            );
-          })}
+            {/* Solid links: consecutive members of the same document's own version chain. */}
+            {chainNodes.slice(1).map((node, i) => {
+              const fromX = chainStartX + i * (NODE_W + COL_GAP) + NODE_W;
+              const toX = chainStartX + (i + 1) * (NODE_W + COL_GAP);
+              return (
+                <path
+                  key={`chain-${node.doc_id}`}
+                  d={`M ${fromX} ${chainY + NODE_H / 2} L ${toX - 6} ${chainY + NODE_H / 2}`}
+                  stroke="var(--rule)"
+                  strokeWidth="1.5"
+                  fill="none"
+                  markerEnd={`url(#arrow-${cluster.key})`}
+                />
+              );
+            })}
 
-          {/* Dashed links: other same-matter documents fanning into the current version. */}
-          {relatedNodes.map((node, i) => {
-            const y0 = i * ROW_H + NODE_H / 2;
-            const y1 = chainY + NODE_H / 2;
-            const midX = (NODE_W + currentX) / 2;
-            return (
-              <path
-                key={`related-${node.doc_id}`}
-                d={`M ${NODE_W} ${y0} C ${midX} ${y0}, ${midX} ${y1}, ${currentX - 6} ${y1}`}
-                stroke="var(--ink-softer)"
-                strokeWidth="1.5"
-                strokeDasharray="5 4"
-                fill="none"
-                markerEnd={`url(#arrow-${cluster.key})`}
-              />
-            );
-          })}
-        </svg>
+            {/* Dashed links: other same-matter documents fanning into the current version. */}
+            {relatedNodes.map((node, i) => {
+              const y0 = i * ROW_H + NODE_H / 2;
+              const y1 = chainY + NODE_H / 2;
+              const midX = (NODE_W + currentX) / 2;
+              return (
+                <path
+                  key={`related-${node.doc_id}`}
+                  d={`M ${NODE_W} ${y0} C ${midX} ${y0}, ${midX} ${y1}, ${currentX - 6} ${y1}`}
+                  stroke="var(--ink-softer)"
+                  strokeWidth="1.5"
+                  strokeDasharray="5 4"
+                  fill="none"
+                  markerEnd={`url(#arrow-${cluster.key})`}
+                />
+              );
+            })}
+          </svg>
 
-        {relatedNodes.map((node, i) => (
-          <LineageNodeCard
-            key={node.doc_id}
-            node={node}
-            x={relatedColX}
-            y={i * ROW_H}
-            current={false}
-            onPreview={onPreview}
-          />
-        ))}
-        {chainNodes.map((node, i) => (
-          <LineageNodeCard
-            key={node.doc_id}
-            node={node}
-            x={chainStartX + i * (NODE_W + COL_GAP)}
-            y={chainY}
-            current={node.doc_id === cluster.current_doc_id}
-            superseded={node.doc_id !== cluster.current_doc_id}
-            onPreview={onPreview}
-          />
-        ))}
+          {relatedNodes.map((node, i) => (
+            <LineageNodeCard
+              key={node.doc_id}
+              node={node}
+              x={relatedColX}
+              y={i * ROW_H}
+              current={false}
+              onPreview={onPreview}
+            />
+          ))}
+          {chainNodes.map((node, i) => (
+            <LineageNodeCard
+              key={node.doc_id}
+              node={node}
+              x={chainStartX + i * (NODE_W + COL_GAP)}
+              y={chainY}
+              current={node.doc_id === cluster.current_doc_id}
+              superseded={node.doc_id !== cluster.current_doc_id}
+              onPreview={onPreview}
+            />
+          ))}
+        </div>
       </div>
 
       <div className="lineage-reasons">

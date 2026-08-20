@@ -86,7 +86,15 @@ class SearchRequest(BaseModel):
     status_filters: list[str] = Field(default_factory=list)
     document_type_filters: list[str] = Field(default_factory=list)
     weights: RankingWeights = Field(default_factory=RankingWeights)
-    candidate_pool: int = 8
+    # Raw nearest-neighbor pool pulled before wall-filtering/ranking/
+    # supersession runs -- has to be generous enough to reliably contain
+    # every document in a query's true matter cluster (so supersession can
+    # compare them against each other at all), not just the single closest
+    # match. At 8 the correct, partner-approved precedent for the corpus's
+    # own flagship "shareholders agreement" query ranked 14th by raw
+    # embedding similarity -- below its own earlier drafts/redlines and a
+    # deliberately-planted stale duplicate -- and never reached scoring.
+    candidate_pool: int = 20
     keep_top: int = 2
 
 

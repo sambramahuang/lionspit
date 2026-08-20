@@ -54,18 +54,25 @@ Fill in `.env`:
 - `PARTNER_EMAILS` — comma-separated emails allowed to set/edit matter
   walls (e.g. your own, for testing).
 
-Seed the demo corpus — `case_documents/` at the repo root, 30 real
-`.docx`/`.pdf` files across 5 matters: two Singapore High Court disputes
-(each with an application for specific production of documents) plus
-three transactional matters (a residential conveyancing, a Series B
-shareholders' agreement, and a Vietnam trademark licence). Every matter
-carries client correspondence on firm letterhead, a billing summary, a
-draft with genuine partner mark-up (struck-through deletions, underlined
-insertions, marginal reviewer comments), a redlined/negotiated version, a
-final/executed version, and at least one same-matter "noise" document
-that shouldn't surface for an unrelated query. See
-`case_documents/README.md` for the full per-matter breakdown and ground
-truth:
+Seed the demo corpus — `case_documents/` at the repo root, 76 real
+`.docx`/`.pdf`/`.txt` files across 14 matters, spanning three sub-sets: two
+Singapore High Court disputes (each with an application for specific
+production of documents) plus three transactional matters (a residential
+conveyancing, a Series B shareholders' agreement, and a Vietnam trademark
+licence); a companion corporate/transactional set purpose-built around
+version discrimination, supersession, semantic-vs-lexical matching, access
+control and conflicts (a two-party joint venture shareholders' agreement,
+a Series A financing, a superseded 2024 precedent, a tenancy, and an
+employment matter); and a second fictional firm's four matters (an asset
+acquisition, an energy dispute, a second venture financing, and a data
+-breach matter) that round out practice-area coverage and supply a second,
+independent conflict example. Every matter carries client correspondence
+on firm letterhead, a billing summary, a draft with genuine partner
+mark-up (struck-through deletions, underlined insertions, marginal
+reviewer comments), a redlined/negotiated version, a final/executed
+version, and at least one same-matter "noise" document that shouldn't
+surface for an unrelated query. See `case_documents/README.md` for the
+full per-matter breakdown and ground truth:
 
 ```bash
 python seed_demo_data.py --reset
@@ -324,9 +331,9 @@ are easy to miss and will produce a blank page or 401s if skipped:
 ## Extending this in the time you have left
 
 - **More corpus**: drop more files into `case_documents/` (any client
-  subfolder, or a new one) and re-run the seed script — currently 30
-  documents, comfortably within the brief's 20–50 range, but more matters
-  means richer clustering/lineage/conflict demos.
+  subfolder, or a new one) and re-run the seed script — currently 76
+  documents across 14 matters, but more matters means richer
+  clustering/lineage/conflict demos.
 - **Conflict detection beyond exact-name matching**: today's check
   (`backend/app/conflicts.py`) is case-insensitive exact matching only —
   fuzzy/alias matching (e.g. "Vantage Components" vs "Vantage Components

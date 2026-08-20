@@ -71,7 +71,7 @@ const DOCUMENT_TYPE_OPTIONS = [
 
 export default function SearchPanel({
   query, setQuery,
-  attachedContext, onAttachedContextChange,
+  attachedContexts, onAttachedContextsChange,
   jurisdictionFilter, setJurisdictionFilter,
   matterTypeFilter, setMatterTypeFilter,
   recencyFilter, setRecencyFilter,
@@ -116,22 +116,29 @@ export default function SearchPanel({
   const handleAttachClick = () => fileInputRef.current?.click();
 
   const handleFileSelected = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file later
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    e.target.value = ""; // allow re-selecting the same file(s) later
+    if (!files.length) return;
     setAttachError(null);
     setAttaching(true);
     try {
-      const res = await api.extractText(file);
-      const text = res.text.length > MAX_ATTACHED_CONTEXT_CHARS
-        ? res.text.slice(0, MAX_ATTACHED_CONTEXT_CHARS) + "…"
-        : res.text;
-      onAttachedContextChange?.({ filename: res.filename, text });
+      const extracted = await Promise.all(files.map(async (file) => {
+        const res = await api.extractText(file);
+        const text = res.text.length > MAX_ATTACHED_CONTEXT_CHARS
+          ? res.text.slice(0, MAX_ATTACHED_CONTEXT_CHARS) + "…"
+          : res.text;
+        return { id: crypto.randomUUID(), filename: res.filename, text };
+      }));
+      onAttachedContextsChange?.([...(attachedContexts || []), ...extracted]);
     } catch (err) {
       setAttachError(err.message);
     } finally {
       setAttaching(false);
     }
+  };
+
+  const removeAttachedContext = (id) => {
+    onAttachedContextsChange?.((attachedContexts || []).filter((doc) => doc.id !== id));
   };
 
   return (
@@ -175,7 +182,7 @@ export default function SearchPanel({
             }}
           />
         </div>
-        <button className="btn btn-primary" onClick={onSearch} disabled={busy || (!query.trim() && !attachedContext)}>
+        <button className="btn btn-primary" onClick={onSearch} disabled={busy || (!query.trim() && !attachedContexts?.length)}>
           {busy ? "Searching..." : "Search"}
         </button>
       </div>
@@ -190,42 +197,45 @@ export default function SearchPanel({
           ref={fileInputRef}
           type="file"
           accept=".txt,.docx,.pdf"
+          multiple
           style={{ display: "none" }}
           onChange={handleFileSelected}
         />
-        {!attachedContext && (
-          <button
-            type="button"
-            className="btn btn-ghost search-attach-btn"
-            onClick={handleAttachClick}
-            disabled={attaching}
-          >
-            <AttachIcon /> {attaching ? "Reading document..." : "Attach a document for context"}
-          </button>
-        )}
-        {attachedContext && (
-          <span className="search-attach-chip">
-            <AttachIcon /> {attachedContext.filename}
+        <button
+          type="button"
+          className="btn btn-ghost search-attach-btn"
+          onClick={handleAttachClick}
+          disabled={attaching}
+        >
+          {attaching
+            ? "Reading document..."
+            : attachedContexts?.length
+              ? "Attach another document"
+              : "Attach a document for context"}
+        </button>
+        {attachedContexts?.map((doc) => (
+          <span className="search-attach-chip" key={doc.id}>
+            <AttachIcon /> {doc.filename}
             <button
               type="button"
-              aria-label="Remove attached document"
-              onClick={() => onAttachedContextChange?.(null)}
+              aria-label={`Remove ${doc.filename}`}
+              onClick={() => removeAttachedContext(doc.id)}
             >
               ×
             </button>
           </span>
-        )}
+        ))}
         {attachError && <span className="reason-text" style={{ margin: 0 }}>{attachError}</span>}
-      </div>
 
-      <button
-        type="button"
-        className="btn btn-ghost search-advanced-toggle"
-        onClick={() => setShowAdvanced((v) => !v)}
-        aria-expanded={showAdvanced}
-      >
-        {showAdvanced ? "▾" : "▸"} Filters &amp; weights
-      </button>
+        <button
+          type="button"
+          className="btn btn-ghost search-advanced-toggle"
+          onClick={() => setShowAdvanced((v) => !v)}
+          aria-expanded={showAdvanced}
+        >
+          Filters &amp; weights
+        </button>
+      </div>
 
       <AnimatePresence initial={false}>
         {showAdvanced && (

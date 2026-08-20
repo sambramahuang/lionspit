@@ -15,11 +15,11 @@ const DEFAULT_WEIGHTS = {
 export default function SearchPage({ onPreview }) {
   const [mode, setMode] = useState("documents"); // "documents" | "clauses"
   const [query, setQuery] = useState("");
-  // { filename, text } | null -- a document's extracted text, attached as
+  // Array of { filename, text } -- documents' extracted text, attached as
   // one-off search context (e.g. the facts of the matter a lawyer is
   // currently working on). Never ingested into the library; see
   // /api/extract-text and SearchPanel's attach control.
-  const [attachedContext, setAttachedContext] = useState(null);
+  const [attachedContexts, setAttachedContexts] = useState([]);
   const [jurisdictionFilter, setJurisdictionFilter] = useState("");
   const [matterTypeFilter, setMatterTypeFilter] = useState("");
   const [recencyFilter, setRecencyFilter] = useState("");
@@ -102,16 +102,18 @@ export default function SearchPage({ onPreview }) {
   };
 
   // What actually gets embedded and sent as the query: the lawyer's own
-  // typed text, plus an attached document's extracted text appended as
-  // clearly-labeled extra context -- kept separate in the UI (a removable
-  // chip, not mixed into the visible textarea) so attaching a document
+  // typed text, plus each attached document's extracted text appended as
+  // clearly-labeled extra context -- kept separate in the UI (removable
+  // chips, not mixed into the visible textarea) so attaching a document
   // never overwrites or buries what they typed.
-  const effectiveQuery = attachedContext
-    ? `${query.trim()}\n\nAdditional context from ${attachedContext.filename}:\n${attachedContext.text}`
+  const effectiveQuery = attachedContexts.length
+    ? `${query.trim()}\n\n${attachedContexts
+        .map((doc) => `Additional context from ${doc.filename}:\n${doc.text}`)
+        .join("\n\n")}`
     : query;
 
   const runSearch = async () => {
-    if (!query.trim() && !attachedContext) return;
+    if (!query.trim() && attachedContexts.length === 0) return;
     setBusy(true);
     setError(null);
     try {
@@ -172,7 +174,7 @@ export default function SearchPage({ onPreview }) {
 
       <SearchPanel
         query={query} setQuery={setQuery}
-        attachedContext={attachedContext} onAttachedContextChange={setAttachedContext}
+        attachedContexts={attachedContexts} onAttachedContextsChange={setAttachedContexts}
         jurisdictionFilter={jurisdictionFilter} setJurisdictionFilter={setJurisdictionFilter}
         matterTypeFilter={matterTypeFilter} setMatterTypeFilter={setMatterTypeFilter}
         recencyFilter={recencyFilter} setRecencyFilter={setRecencyFilter}

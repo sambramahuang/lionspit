@@ -63,19 +63,37 @@ const TAB_ITEMS = [
   { key: "search", label: "Search & Draft", icon: <SearchIcon /> },
 ];
 
+const SAVED_VIEW_KEY = "kitsu:last-view";
+const VALID_VIEWS = new Set(["welcome", "home", "library", "search"]);
+const VALID_LIBRARY_VIEWS = new Set(["list", "lineage", "matters"]);
+
+function readSavedView() {
+  if (typeof window === "undefined") return { view: "home", libraryView: "list" };
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(SAVED_VIEW_KEY) || "null");
+    const view = VALID_VIEWS.has(saved?.view) ? saved.view : "home";
+    return {
+      view,
+      libraryView: VALID_LIBRARY_VIEWS.has(saved?.libraryView) ? saved.libraryView : "list",
+    };
+  } catch {
+    return { view: "home", libraryView: "list" };
+  }
+}
 
 export default function App() {
+  const savedView = readSavedView();
   const [session, setSession] = useState(undefined); // undefined = checking, null = signed out
   const [me, setMe] = useState(null);
-  const [tab, setTab] = useState("home");
+  const [tab, setTab] = useState(savedView.view === "welcome" ? "home" : savedView.view);
   // What's actually rendered -- lags behind `tab` during a wipe so the
   // content swap happens while the panel fully covers the screen, not
   // visibly mid-transition. Equal to `tab` outside of a transition.
-  const [displayedTab, setDisplayedTab] = useState("home");
+  const [displayedTab, setDisplayedTab] = useState(savedView.view);
   const [wipePhase, setWipePhase] = useState(null); // null | "covering" | "revealing"
   const [wipeDirection, setWipeDirection] = useState("right");
-  const pendingViewRef = useRef("home");
-  const [libraryView, setLibraryView] = useState("list");
+  const pendingViewRef = useRef(savedView.view);
+  const [libraryView, setLibraryView] = useState(savedView.libraryView);
   const [refreshKey, setRefreshKey] = useState(0);
   const [apiUp, setApiUp] = useState(null);
   const [docCount, setDocCount] = useState(0);
@@ -92,6 +110,17 @@ export default function App() {
   const [displayedAuthed, setDisplayedAuthed] = useState(false);
   const [authWipePhase, setAuthWipePhase] = useState(null); // null | "covering" | "revealing"
   const wasAuthedRef = useRef(false);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        SAVED_VIEW_KEY,
+        JSON.stringify({ view: displayedTab, libraryView })
+      );
+    } catch {
+      // Storage can be unavailable in private browsing; navigation still works.
+    }
+  }, [displayedTab, libraryView]);
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
 
@@ -198,10 +227,17 @@ export default function App() {
     );
   }
 
+  const activeNavKey = displayedTab === "welcome" ? "home" : displayedTab;
+
   return (
     <div className="app-shell">
       {authWipePhase === "revealing" && (
-        <PageWipe phase="revealing" onRevealComplete={() => setAuthWipePhase(null)} />
+        <PageWipe
+          phase="revealing"
+          axis="y"
+          direction="down"
+          onRevealComplete={() => setAuthWipePhase(null)}
+        />
       )}
       <div className="app-bg">
         <AppBackground />
@@ -230,7 +266,7 @@ export default function App() {
             icon: t.icon,
             label: t.label,
             onClick: () => changeTab(t.key),
-            className: tab === t.key && displayedTab !== "welcome" ? "active" : "",
+            className: activeNavKey === t.key ? "active" : "",
           }))}
           panelHeight={64}
           baseItemSize={56}

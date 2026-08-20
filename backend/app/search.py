@@ -477,6 +477,38 @@ def _supersession_reason(current_meta: dict, other_meta: dict) -> str:
     return "; ".join(reasons) if reasons else "earlier document in the same matter"
 
 
+def _merge_singleton_subfamilies(families: dict) -> dict:
+    """A lone document whose normalized family key is a strict subset of
+    another family's key *in the same matter* is almost always the same
+    underlying document saved under a looser filename, not an unrelated
+    one -- e.g. case_documents/MAT-2026-0561's deliberately-misleading
+    "07_shareholders_agreement_v2_FINAL_final.docx" (family key
+    "shareholders_agreement") is a stale duplicate of
+    "05_final_joint_venture_shareholders_agreement.docx" (family key
+    "joint_venture_shareholders_agreement"), not a document of its own.
+    Folding it in lets it chain as a real "version" edge (with the
+    specific supersession reason) instead of falling back to a generic
+    "related document" edge. Only merges when exactly one candidate
+    superset exists in the matter -- an ambiguous match is left alone
+    rather than risk merging two genuinely different documents."""
+    names = list(families.keys())
+    token_sets = {n: set(n.split("_")) for n in names}
+    merged = dict(families)
+    for name in names:
+        if name not in merged or len(merged[name]) != 1:
+            continue
+        my_tokens = token_sets[name]
+        if not my_tokens:
+            continue
+        candidates = [
+            other for other in names
+            if other != name and other in merged and my_tokens < token_sets[other]
+        ]
+        if len(candidates) == 1:
+            merged[candidates[0]].extend(merged.pop(name))
+    return merged
+
+
 def compute_lineage(user_email: str) -> LineageResponse:
     """Corpus-wide view of the same matter-clustering + supersession logic
     run_search uses per-query, exposed as a standalone graph: one cluster
@@ -508,6 +540,7 @@ def compute_lineage(user_email: str) -> LineageResponse:
         families = defaultdict(list)
         for record in matter_group:
             families[_lineage_family_key(record["metadata"].get("filename", record["doc_id"]))].append(record)
+        families = _merge_singleton_subfamilies(families)
 
         def sort_key(r):
             meta = r["metadata"]

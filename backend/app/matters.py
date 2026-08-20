@@ -8,10 +8,19 @@ to the frontend (search, document list/get, lineage, draft) goes through
 is_blocked()/is_key_blocked() here instead of re-implementing the check.
 """
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 from app import vectorstore
 from app.models import ConflictFlag, MatterSummary, MatterWallInfo
+
+
+def _most_common(values) -> str | None:
+    """Most-frequent non-empty value in `values`, or None. Ties break on
+    whichever value Counter.most_common() saw first, which is stable
+    insertion order in CPython -- fine here since a tie means the
+    documents in the group didn't agree in the first place."""
+    counts = Counter(v for v in values if v)
+    return counts.most_common(1)[0][0] if counts else None
 
 
 def _normalize_reference(ref: str) -> str:
@@ -123,10 +132,17 @@ def summarize(user_email: str, is_partner: bool) -> list[MatterSummary]:
 
         wall = walls.get(key)
         conflict = conflicts.get(key)
-        first = group[0]["metadata"]
-        client = first.get("client_name") or "Unnamed client"
-        matter_type = first.get("matter_type") or "Matter"
-        jurisdiction = first.get("jurisdiction")
+        # Majority vote across every document in the group, not group[0] --
+        # `records` comes straight from an unordered `SELECT ... FROM
+        # documents`, so "the first row Postgres happens to return" is
+        # arbitrary, and a single outlier extraction (e.g. an internal file
+        # note whose text reads more firm-centrically, or a contract naming
+        # the counterparty as prominently as the client) could otherwise
+        # mislabel the whole matter row even though most of its documents
+        # agree on the real client_name/matter_type/jurisdiction.
+        client = _most_common(g["metadata"].get("client_name") for g in group) or "Unnamed client"
+        matter_type = _most_common(g["metadata"].get("matter_type") for g in group) or "Matter"
+        jurisdiction = _most_common(g["metadata"].get("jurisdiction") for g in group)
         label = f"{client} — {matter_type} · {jurisdiction}" if jurisdiction else f"{client} — {matter_type}"
         # Surface the reference actually driving the grouping (see
         # cluster_key) so a mixed-document-type matter's label doesn't look
