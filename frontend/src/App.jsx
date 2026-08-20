@@ -327,10 +327,15 @@ export default function App() {
               />
             )}
             {libraryView === "lineage" && (
-              <LineageGraph refreshKey={refreshKey} onPreview={preview.openPreview} />
+              <LineageGraph
+                refreshKey={refreshKey}
+                onPreview={preview.openPreview}
+                isPartner={!!me?.is_partner}
+                onChanged={bumpRefresh}
+              />
             )}
             {libraryView === "matters" && (
-              <MattersView refreshKey={refreshKey} isPartner={!!me?.is_partner} />
+              <MattersView refreshKey={refreshKey} isPartner={!!me?.is_partner} onChanged={bumpRefresh} />
             )}
           </>
         )}

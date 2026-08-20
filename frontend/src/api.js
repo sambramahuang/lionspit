@@ -53,6 +53,8 @@ export const api = {
 
   listMatters: () => request("/api/matters"),
 
+  deleteMatter: (matterKey) => request(`/api/matters/${encodeURIComponent(matterKey)}`, { method: "DELETE" }),
+
   setMatterWall: (matterKey, payload) =>
     request(`/api/matters/${encodeURIComponent(matterKey)}/wall`, {
       method: "POST",

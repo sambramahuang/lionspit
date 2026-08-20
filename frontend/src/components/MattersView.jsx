@@ -40,12 +40,13 @@ function EmailListEditor({ emails, onChange }) {
   );
 }
 
-export default function MattersView({ isPartner, refreshKey }) {
+export default function MattersView({ isPartner, refreshKey, onChanged }) {
   const [matters, setMatters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(null);
   const [acking, setAcking] = useState(null);
+  const [deleting, setDeleting] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -74,6 +75,25 @@ export default function MattersView({ isPartner, refreshKey }) {
       setError(e.message);
     } finally {
       setSaving(null);
+    }
+  };
+
+  const handleDelete = async (m) => {
+    if (
+      !confirm(
+        `Delete the entire matter "${m.label}"? This removes all ${m.document_count} document(s) in it and can't be undone.`
+      )
+    )
+      return;
+    setDeleting(m.matter_key);
+    setError(null);
+    try {
+      await api.deleteMatter(m.matter_key);
+      onChanged?.();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -199,9 +219,19 @@ export default function MattersView({ isPartner, refreshKey }) {
                   </td>
                   {isPartner && (
                     <td>
-                      <button className="btn btn-ghost" disabled={saving === m.matter_key} onClick={() => save(m)}>
-                        {saving === m.matter_key ? "Saving..." : "Save"}
-                      </button>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className="btn btn-ghost" disabled={saving === m.matter_key} onClick={() => save(m)}>
+                          {saving === m.matter_key ? "Saving..." : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger-ghost"
+                          disabled={deleting === m.matter_key}
+                          onClick={() => handleDelete(m)}
+                        >
+                          {deleting === m.matter_key ? "Deleting..." : "Delete matter"}
+                        </button>
+                      </div>
                     </td>
                   )}
                 </tr>

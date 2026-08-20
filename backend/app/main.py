@@ -214,6 +214,21 @@ def list_matters(user: CurrentUser = Depends(get_current_user)):
     return matters.summarize(user.email, user.is_partner)
 
 
+@app.delete("/api/matters/{matter_key}")
+def delete_matter(matter_key: str, user: CurrentUser = Depends(require_partner)):
+    """A matter has no row of its own (see matters.cluster_key) -- deleting
+    one means cascading through every document whose computed cluster key
+    matches. Partner-gated and wall-checked the same way as delete_document."""
+    if matters.is_key_blocked(matter_key, user.email, matters.load_walls()):
+        raise HTTPException(403, "This matter is walled off. You don't have access to delete it.")
+    doc_ids = [r["doc_id"] for r in vectorstore.list_all() if matters.cluster_key(r["metadata"]) == matter_key]
+    if not doc_ids:
+        raise HTTPException(404, "matter not found")
+    for doc_id in doc_ids:
+        vectorstore.delete_document(doc_id)
+    return {"status": "deleted", "matter_key": matter_key, "deleted_count": len(doc_ids)}
+
+
 @app.post("/api/matters/{matter_key}/wall", response_model=MatterWallInfo)
 def set_matter_wall(matter_key: str, req: MatterWallRequest, user: CurrentUser = Depends(require_partner)):
     allowed = sorted({e.strip().lower() for e in req.allowed_emails if e.strip()})

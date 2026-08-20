@@ -76,7 +76,7 @@ function buildVersionChain(cluster) {
   return chain;
 }
 
-function ClusterDiagram({ cluster, onPreview }) {
+function ClusterDiagram({ cluster, onPreview, isPartner, deleting, onDeleteMatter }) {
   const nodeById = Object.fromEntries(cluster.nodes.map((n) => [n.doc_id, n]));
   const chainIds = buildVersionChain(cluster);
   const chainIdSet = new Set(chainIds);
@@ -95,7 +95,19 @@ function ClusterDiagram({ cluster, onPreview }) {
   return (
     <div className="lineage-cluster">
       <div className="lineage-cluster-label">
-        {cluster.label} <span className="count">{cluster.nodes.length}</span>
+        <span>{cluster.label}</span>
+        <span className="count">{cluster.nodes.length}</span>
+        {isPartner && (
+          <button
+            type="button"
+            className="btn btn-danger-ghost"
+            style={{ marginLeft: "auto" }}
+            disabled={deleting === cluster.key}
+            onClick={() => onDeleteMatter?.(cluster)}
+          >
+            {deleting === cluster.key ? "Deleting..." : "Delete matter"}
+          </button>
+        )}
       </div>
 
       <div className="lineage-diagram" style={{ height: svgHeight * scale + DIAGRAM_PADDING_TOP }}>
@@ -184,10 +196,45 @@ function ClusterDiagram({ cluster, onPreview }) {
   );
 }
 
-export default function LineageGraph({ refreshKey, onPreview }) {
+export default function LineageGraph({ refreshKey, onPreview, isPartner, onChanged }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deletingKey, setDeletingKey] = useState(null);
+
+  const handleDeleteMatter = async (cluster) => {
+    if (
+      !confirm(
+        `Delete the entire matter "${cluster.label}"? This removes all ${cluster.nodes.length} document(s) in it and can't be undone.`
+      )
+    )
+      return;
+    setDeletingKey(cluster.key);
+    setError(null);
+    try {
+      await api.deleteMatter(cluster.key);
+      onChanged?.();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setDeletingKey(null);
+    }
+  };
+
+  const handleDeleteStandalone = async (node) => {
+    if (!confirm(`Delete "${node.filename}"? This is the only document in its matter, so this removes the whole matter and can't be undone.`))
+      return;
+    setDeletingKey(node.doc_id);
+    setError(null);
+    try {
+      await api.deleteDocument(node.doc_id);
+      onChanged?.();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setDeletingKey(null);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -215,7 +262,14 @@ export default function LineageGraph({ refreshKey, onPreview }) {
   return (
     <div>
       {data.clusters.map((cluster) => (
-        <ClusterDiagram key={cluster.key} cluster={cluster} onPreview={onPreview} />
+        <ClusterDiagram
+          key={cluster.key}
+          cluster={cluster}
+          onPreview={onPreview}
+          isPartner={isPartner}
+          deleting={deletingKey}
+          onDeleteMatter={handleDeleteMatter}
+        />
       ))}
 
       {data.standalone.length > 0 && (
@@ -231,13 +285,25 @@ export default function LineageGraph({ refreshKey, onPreview }) {
             {data.standalone.map((node) => (
               <div key={node.doc_id} className="lineage-standalone-item">
                 <span className="lineage-standalone-name">{node.filename}</span>
-                <button
-                  type="button"
-                  className="btn btn-ghost preview-btn"
-                  onClick={() => onPreview?.(node.doc_id)}
-                >
-                  Preview
-                </button>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost preview-btn"
+                    onClick={() => onPreview?.(node.doc_id)}
+                  >
+                    Preview
+                  </button>
+                  {isPartner && (
+                    <button
+                      type="button"
+                      className="btn btn-danger-ghost preview-btn"
+                      disabled={deletingKey === node.doc_id}
+                      onClick={() => handleDeleteStandalone(node)}
+                    >
+                      {deletingKey === node.doc_id ? "Deleting..." : "Delete"}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
