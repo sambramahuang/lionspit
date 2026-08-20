@@ -1,0 +1,17 @@
+NORTHSTAR & VALE LLP
+CLIENT INCIDENT REPORT
+
+Matter: MAT-2026-0604
+Date: 2026-02-06
+Client: Northstar Health Systems Pte Ltd
+Counterparty: CloudMosaic Solutions Pte Ltd
+Practice area: Technology, privacy and data protection
+Jurisdiction: Singapore
+Document type: Other
+Confidentiality: Restricted
+
+Northstar Health Systems Pte Ltd reports that an employee of CloudMosaic Solutions Pte Ltd, its hosted patient-portal provider, may have accessed a diagnostic export outside the agreed support ticket. The export contained patient identifiers and appointment information but no payment card data.
+
+The initial investigation indicates access between 2 and 4 February 2026. CloudMosaic has disabled the account, preserved access logs and appointed an incident manager. Northstar requires advice on contractual notification duties, PDPA assessment, patient communications and preservation of evidence.
+
+The incident is being handled under the technology services agreement and the data-processing schedule. This report is privileged and should not be circulated outside the incident response team.

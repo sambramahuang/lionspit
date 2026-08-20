@@ -18,6 +18,7 @@ export default function DocumentLibrary({ refreshKey, onChanged, onPreview, isPa
   const [q, setQ] = useState("");
   const [facets, setFacets] = useState(EMPTY_FACETS);
   const [deletingId, setDeletingId] = useState(null);
+  const [approvingId, setApprovingId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -53,6 +54,20 @@ export default function DocumentLibrary({ refreshKey, onChanged, onPreview, isPa
       setError(e.message);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleApproval = async (doc) => {
+    const approved = !doc.metadata.partner_approved;
+    setApprovingId(doc.doc_id);
+    setError(null);
+    try {
+      await api.setDocumentApproval(doc.doc_id, approved);
+      onChanged?.();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setApprovingId(null);
     }
   };
 
@@ -194,7 +209,15 @@ export default function DocumentLibrary({ refreshKey, onChanged, onPreview, isPa
                   <td className="mono">{d.metadata.version || "—"}</td>
                   <td>
                     {d.metadata.partner_approved ? (
-                      <span className="badge badge-approved">partner-approved</span>
+                      <>
+                        <span className="badge badge-approved">partner-approved</span>
+                        {d.metadata.approved_by && (
+                          <div className="approval-meta">
+                            by {d.metadata.approved_by}
+                            {d.metadata.approved_at && ` · ${new Date(d.metadata.approved_at).toLocaleDateString()}`}
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <span className="badge badge-unapproved">unapproved</span>
                     )}
@@ -217,14 +240,26 @@ export default function DocumentLibrary({ refreshKey, onChanged, onPreview, isPa
                         Preview
                       </button>
                       {isPartner && (
-                        <button
-                          type="button"
-                          className="btn btn-danger-ghost preview-btn"
-                          disabled={deletingId === d.doc_id}
-                          onClick={() => handleDelete(d)}
-                        >
-                          {deletingId === d.doc_id ? "Deleting…" : "Delete"}
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            className={`btn ${d.metadata.partner_approved ? "btn-ghost" : "btn-primary"} preview-btn`}
+                            disabled={approvingId === d.doc_id}
+                            onClick={() => handleApproval(d)}
+                          >
+                            {approvingId === d.doc_id
+                              ? "Updating…"
+                              : d.metadata.partner_approved ? "Revoke approval" : "Approve"}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-danger-ghost preview-btn"
+                            disabled={deletingId === d.doc_id}
+                            onClick={() => handleDelete(d)}
+                          >
+                            {deletingId === d.doc_id ? "Deleting…" : "Delete"}
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>

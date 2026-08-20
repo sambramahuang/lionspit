@@ -1,0 +1,22 @@
+NORTHSTAR & VALE LLP
+COMPLETION AND WARRANTY CLAIM MEMORANDUM
+
+Matter: MAT-2026-0601
+Date: 2026-04-18
+Client: HelioGrid Energy Pte Ltd
+Counterparty: Meridian Infrastructure Holdings Pte Ltd
+Practice area: Corporate and M&A
+Document type: Legal opinions
+Version: 1.0
+
+1. PURPOSE
+This memorandum records the post-completion review of the executed Asset Purchase Agreement dated 31 March 2026 and advises on a customer claim concerning a battery-management system delivered before Completion.
+
+2. CONTRACTUAL POSITION
+Under Clauses 2 and 5 of the Agreement, pre-Completion product warranty liabilities remain with Meridian. The escrow may be applied after notice and a reasonable opportunity for Meridian to respond.
+
+3. RECOMMENDATION
+HelioGrid should preserve the system logs, notify Meridian under the contractual claims procedure and avoid admitting liability to Eastern Grid Services before the technical report is complete. The claim is not a reason to suspend the transferred customer contracts.
+
+4. CONCLUSION
+The executed version governs. The earlier draft v1 and partner redline v2 should be retained as lineage documents but should not be treated as the current operative agreement.

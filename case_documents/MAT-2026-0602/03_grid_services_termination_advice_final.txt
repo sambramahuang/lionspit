@@ -1,0 +1,23 @@
+NORTHSTAR & VALE LLP
+PRIVILEGED LEGAL OPINION - FINAL
+
+Matter: MAT-2026-0602
+Date: 2026-02-20
+Client: Meridian Infrastructure Holdings Pte Ltd
+Counterparty: Eastbank Utilities Ltd
+Practice area: Dispute resolution and energy regulation
+Document type: Legal opinions
+Version: 2.0
+Status: In force
+Partner approved: Yes
+
+1. CONCLUSION
+Eastbank is unlikely to have a present right to terminate the Grid Services Framework Agreement without first giving a contractual breach notice and the 30-day cure period required by Clause 14.
+
+2. REASONS
+The January availability figure is disputed and may be affected by scheduled maintenance excluded from the calculation. Clause 9 provides service credits for an isolated shortfall. The termination right is not expressed to arise from any single calculation dispute and must be construed with the cure mechanism.
+
+3. NEXT STEPS
+Respond within five Business Days, attach the verified meter data, invite an independent calculation and reserve Meridian's rights. Do not concede that the event is a material breach. If Eastbank issues a termination notice, seek an urgent declaration and injunctive relief.
+
+FINAL PARTNER-APPROVED ADVICE. Supersedes the draft opinion dated 2 February 2026.

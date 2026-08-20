@@ -43,6 +43,12 @@ export const api = {
 
   deleteDocument: (docId) => request(`/api/documents/${encodeURIComponent(docId)}`, { method: "DELETE" }),
 
+  setDocumentApproval: (docId, approved, note = null) =>
+    request(`/api/documents/${encodeURIComponent(docId)}/approval`, {
+      method: "POST",
+      body: JSON.stringify({ approved, note }),
+    }),
+
   lineage: () => request("/api/lineage"),
 
   listMatters: () => request("/api/matters"),

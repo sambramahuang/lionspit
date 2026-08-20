@@ -1,0 +1,16 @@
+NORTHSTAR & VALE LLP
+INCIDENT CLOSURE MEMORANDUM
+
+Matter: MAT-2026-0604
+Date: 2026-04-12
+Client: Northstar Health Systems Pte Ltd
+Counterparty: CloudMosaic Solutions Pte Ltd
+Practice area: Technology, privacy and data protection
+Document type: Legal opinions
+Status: In force
+
+Northstar submitted the agreed regulatory notification on 18 February 2026 and notified affected individuals on 21 February 2026. CloudMosaic completed the access-control remediation and independent review on 28 March 2026.
+
+The matter may be closed subject to monitoring under the Remediation Addendum. Northstar should retain the incident report, access logs, notices and signed remediation certificate for the contractual retention period. Any future incident should be assessed against the four-hour notice obligation.
+
+This closure memorandum records the outcome of the incident and does not waive Northstar's rights for any later-discovered loss.

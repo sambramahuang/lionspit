@@ -1,0 +1,23 @@
+NORTHSTAR & VALE LLP
+PRIVILEGED INCIDENT RESPONSE ADVICE - FINAL
+
+Matter: MAT-2026-0604
+Date: 2026-02-14
+Client: Northstar Health Systems Pte Ltd
+Processor: CloudMosaic Solutions Pte Ltd
+Practice area: Technology, privacy and data protection
+Document type: Legal opinions
+Version: 2.0
+Status: In force
+Partner approved: Yes
+
+1. FINDING
+The completed log review shows that 184 patient records were viewed by a support account without a business need. The records contained names, patient identifiers and appointment information. No clinical diagnosis, payment data or download event has been identified.
+
+2. CONTRACTUAL RESPONSE
+CloudMosaic breached the access-control and incident-notification provisions of the technology services agreement. Northstar should issue a reservation of rights, require an independent access-control review and preserve its indemnity claim.
+
+3. PRIVACY RESPONSE
+Northstar should document the risk assessment, notify the regulator within the applicable period if the prescribed threshold is met, and contact affected individuals using the approved notice. The notice should describe the event without speculating about motive.
+
+FINAL PARTNER-APPROVED ADVICE. Supersedes the draft dated 8 February 2026.

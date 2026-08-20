@@ -1,0 +1,25 @@
+NORTHSTAR & VALE LLP
+TECHNOLOGY SERVICES REMEDIATION ADDENDUM
+
+Matter: MAT-2026-0604
+Date: 2026-03-01
+Client: Northstar Health Systems Pte Ltd
+Counterparty: CloudMosaic Solutions Pte Ltd
+Practice area: Technology and data protection
+Document type: Contracts / Agreements
+Version: 1.0
+Status: In force
+
+1. ACCESS CONTROLS
+CloudMosaic shall enforce least-privilege access, named support accounts, quarterly access reviews and immediate revocation when a support assignment ends.
+
+2. LOGGING AND ALERTS
+All access to diagnostic exports shall be logged with user, timestamp, purpose and record count. An alert shall be sent to Northstar when an export exceeds 25 records or occurs outside a ticketed support window.
+
+3. INCIDENT NOTICE
+CloudMosaic shall notify Northstar within four hours of discovering suspected unauthorised access, preserve relevant evidence and provide a preliminary report within 24 hours.
+
+4. AUDIT
+Northstar may conduct one audit annually and an additional audit after a security incident. The parties shall agree a remediation plan and timetable.
+
+This Addendum forms part of the technology services agreement and prevails over inconsistent operational procedures.

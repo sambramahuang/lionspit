@@ -30,11 +30,15 @@ class DocumentMetadata(BaseModel):
     responsible_lawyer: Optional[str] = None
     counterparty_type: Optional[str] = None
     document_type: Optional[str] = None
+    status: Optional[str] = None  # "In force" | "Repealed" | "Amending/ overruled"
     matter_completed: Optional[bool] = None
     document_executed: Optional[bool] = None
     is_draft_or_model: Optional[str] = None  # "draft" | "model" | "executed" | "unknown"
     version: Optional[str] = None
     partner_approved: Optional[bool] = None
+    approved_by: Optional[str] = None
+    approved_at: Optional[str] = None
+    approval_note: Optional[str] = None
     short_description: Optional[str] = None
     confidentiality: Optional[str] = "internal"  # "public" | "internal" | "restricted"
 
@@ -45,6 +49,11 @@ class DocumentRecord(BaseModel):
     metadata: DocumentMetadata
     usage_count: int = 0
     text_preview: str = ""
+
+
+class DocumentApprovalRequest(BaseModel):
+    approved: bool
+    note: str | None = None
 
 
 class IngestResult(BaseModel):
@@ -112,6 +121,7 @@ class ClauseSearchRequest(BaseModel):
     query: str
     candidate_pool: int = 20
     keep_top: int = 8
+    weights: RankingWeights = Field(default_factory=RankingWeights)
 
 
 class ClauseResult(BaseModel):
@@ -147,6 +157,7 @@ class LineageEdge(BaseModel):
     from_doc_id: str  # the older / superseded document
     to_doc_id: str  # the current document it points to
     reason: str
+    relation: str = "version"  # "version" or "related"
 
 
 class LineageCluster(BaseModel):

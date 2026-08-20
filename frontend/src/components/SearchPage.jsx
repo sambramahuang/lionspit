@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import SearchPanel from "./SearchPanel.jsx";
 import ResultCard from "./ResultCard.jsx";
@@ -18,21 +18,17 @@ export default function SearchPage({ onPreview }) {
   const [jurisdictionFilter, setJurisdictionFilter] = useState("");
   const [matterTypeFilter, setMatterTypeFilter] = useState("");
   const [recencyFilter, setRecencyFilter] = useState("");
-  const [statusFilters, setStatusFilters] = useState([
-    "In force",
-    "Repealed",
-    "Amending/ overruled",
-  ]);
-  const [documentTypeFilters, setDocumentTypeFilters] = useState([
-    "Cases / Judgments",
-    "Legislation",
-    "Regulations",
-    "Contracts / Agreements",
-    "Legal opinions",
-    "Pleadings",
-    "Firm precedents",
-    "Other",
-  ]);
+  // Empty = unfiltered, matching every other filter here (jurisdiction,
+  // matter type, recency) and search.py's own convention (`if
+  // req.status_filters:` only applies the filter when non-empty). Defaulting
+  // these to "every option pre-checked" instead looks equivalent in the UI
+  // but isn't: search.py then filters for metadata.status/document_type
+  // being IN that list, and most of the corpus predates these two fields
+  // entirely (status is unset, document_type is free-text from the older
+  // ingestion prompt) -- so a "fully checked" default silently excluded
+  // every document from every search.
+  const [statusFilters, setStatusFilters] = useState([]);
+  const [documentTypeFilters, setDocumentTypeFilters] = useState([]);
   const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
 
   const [busy, setBusy] = useState(false);
@@ -44,6 +40,54 @@ export default function SearchPage({ onPreview }) {
   const [highlighted, setHighlighted] = useState(null);
 
   const cardRefs = useRef({});
+  const resultsRef = useRef(null);
+
+  useEffect(() => {
+    if (!result && !clauseResult) return;
+
+    const target = resultsRef.current;
+    if (!target) return;
+    const targetY = target.getBoundingClientRect().top + window.scrollY;
+    const startY = window.scrollY;
+    const distance = targetY - startY;
+    const duration = 1200;
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    if (reduceMotion || Math.abs(distance) < 4) {
+      window.scrollTo({ top: targetY, left: 0, behavior: "auto" });
+      return;
+    }
+
+    const root = document.documentElement;
+    const previousScrollBehavior = root.style.scrollBehavior;
+    // Disable the global CSS smooth-scroll rule while driving every frame
+    // ourselves; otherwise each frame queues another browser animation.
+    root.style.scrollBehavior = "auto";
+
+    let frameId;
+    const startTime = performance.now();
+    const easeInOut = (progress) => {
+      const eased = progress < 0.5
+        ? 2 * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      return eased;
+    };
+    const animateScroll = (now) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      window.scrollTo({
+        top: startY + distance * easeInOut(progress),
+        left: 0,
+        behavior: "auto",
+      });
+      if (progress < 1) frameId = requestAnimationFrame(animateScroll);
+    };
+    frameId = requestAnimationFrame(animateScroll);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      root.style.scrollBehavior = previousScrollBehavior;
+    };
+  }, [result, clauseResult]);
 
   const switchMode = (next) => {
     setMode(next);
@@ -58,7 +102,7 @@ export default function SearchPage({ onPreview }) {
     setError(null);
     try {
       if (mode === "clauses") {
-        const res = await api.searchClauses({ query });
+        const res = await api.searchClauses({ query, weights });
         setClauseResult(res);
         setSelectedIds([...new Set(res.kept.map((k) => k.doc_id))]);
       } else {
@@ -126,8 +170,9 @@ export default function SearchPage({ onPreview }) {
 
       {error && <div className="error-banner" style={{ marginTop: 16 }}>{error}</div>}
 
-      {mode === "clauses" && clauseResult && (
-        <>
+      <div ref={resultsRef} className="search-results-anchor">
+        {mode === "clauses" && clauseResult && (
+          <>
           <div className="section-label">
             Matching clauses <span className="count">{clauseResult.kept.length}</span>
           </div>
@@ -156,11 +201,11 @@ export default function SearchPage({ onPreview }) {
           )}
 
           <DraftView query={query} selectedDocIds={selectedIds} onCiteClick={jumpToSource} />
-        </>
-      )}
+          </>
+        )}
 
-      {mode === "documents" && result && (
-        <>
+        {mode === "documents" && result && (
+          <>
           <div className="section-label">
             Selected as strongest precedents <span className="count">{result.kept.length}</span>
           </div>
@@ -189,6 +234,11 @@ export default function SearchPage({ onPreview }) {
               <div className="section-label">
                 Rejected <span className="count">{result.rejected.length}</span>
               </div>
+              <p style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "0 0 10px" }}>
+                Flagged automatically — superseded, not partner-approved, or not relevant to this
+                query. Nothing here is ever deleted or hidden from you: check the box to include
+                one in the draft anyway if you know better than the flag.
+              </p>
               <div className="result-grid">
                 {result.rejected.map((item) => (
                   <ResultCard
@@ -196,6 +246,9 @@ export default function SearchPage({ onPreview }) {
                     item={item}
                     tone="rejected"
                     reason={item.reason}
+                    selectable
+                    selected={selectedIds.includes(item.doc_id)}
+                    onToggle={toggleSelect}
                     onPreview={previewAndHighlight}
                     sourceRef={(el) => (cardRefs.current[item.doc_id] = el)}
                     highlighted={highlighted === item.doc_id}
@@ -250,8 +303,9 @@ export default function SearchPage({ onPreview }) {
           )}
 
           <DraftView query={query} selectedDocIds={selectedIds} onCiteClick={jumpToSource} />
-        </>
-      )}
+          </>
+        )}
+      </div>
     </>
   );
 }
