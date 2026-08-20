@@ -30,15 +30,6 @@ const ICON_PROPS = {
   strokeLinejoin: "round",
 };
 
-function StartHereIcon() {
-  return (
-    <svg {...ICON_PROPS}>
-      <path d="M5 3v18" />
-      <path d="M5 4h11l-2.5 4L16 12H5" />
-    </svg>
-  );
-}
-
 function HomeIcon() {
   return (
     <svg {...ICON_PROPS}>
@@ -68,7 +59,6 @@ function SearchIcon() {
 
 const TAB_ITEMS = [
   { key: "home", label: "Home", icon: <HomeIcon /> },
-  { key: "start", label: "Start Here", icon: <StartHereIcon /> },
   { key: "library", label: "Library", icon: <LibraryIcon /> },
   { key: "search", label: "Search & Draft", icon: <SearchIcon /> },
 ];
@@ -84,6 +74,7 @@ export default function App() {
   const [displayedTab, setDisplayedTab] = useState("home");
   const [wipePhase, setWipePhase] = useState(null); // null | "covering" | "revealing"
   const [wipeDirection, setWipeDirection] = useState("right");
+  const pendingViewRef = useRef("home");
   const [libraryView, setLibraryView] = useState("list");
   const [refreshKey, setRefreshKey] = useState(0);
   const [apiUp, setApiUp] = useState(null);
@@ -105,13 +96,27 @@ export default function App() {
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
 
   const changeTab = (next) => {
-    if (next === tab || wipePhase) return; // ignore repeats and mid-transition clicks
+    if ((next === tab && displayedTab === next) || wipePhase) return; // ignore repeats and mid-transition clicks
     const currentIndex = TAB_ITEMS.findIndex((item) => item.key === tab);
     const nextIndex = TAB_ITEMS.findIndex((item) => item.key === next);
+    pendingViewRef.current = next;
     setWipeDirection(nextIndex > currentIndex ? "right" : "left");
     setTab(next);
     if (prefersReducedMotion) {
       setDisplayedTab(next);
+      return;
+    }
+    setWipePhase("covering");
+  };
+
+  const showWelcome = () => {
+    if (wipePhase || (tab === "home" && displayedTab === "welcome")) return;
+    const currentIndex = TAB_ITEMS.findIndex((item) => item.key === tab);
+    pendingViewRef.current = "welcome";
+    setWipeDirection(currentIndex === 0 ? "left" : "right");
+    setTab("home");
+    if (prefersReducedMotion) {
+      setDisplayedTab("welcome");
       return;
     }
     setWipePhase("covering");
@@ -122,7 +127,10 @@ export default function App() {
       setSession(sess);
       const authed = !!sess;
       if (authed && !wasAuthedRef.current) {
+        pendingViewRef.current = "welcome";
+        setTab("home");
         if (prefersReducedMotion) {
+          setDisplayedTab("welcome");
           setDisplayedAuthed(true);
         } else {
           setAuthWipePhase("covering");
@@ -213,6 +221,7 @@ export default function App() {
             scaleOnHover={1.08}
             showMobileWarning={false}
             showTooltip={false}
+            onClick={showWelcome}
           />
         </div>
 
@@ -221,7 +230,7 @@ export default function App() {
             icon: t.icon,
             label: t.label,
             onClick: () => changeTab(t.key),
-            className: tab === t.key ? "active" : "",
+            className: tab === t.key && displayedTab !== "welcome" ? "active" : "",
           }))}
           panelHeight={64}
           baseItemSize={56}
@@ -240,9 +249,9 @@ export default function App() {
       </header>
 
       <main className="content">
-        {displayedTab === "home" && <HeroView onExplore={() => changeTab("start")} />}
+        {displayedTab === "welcome" && <HeroView onExplore={() => changeTab("home")} />}
 
-        {displayedTab === "start" && (
+        {displayedTab === "home" && (
           <OverviewView
             onPreview={preview.openPreview}
             onGoToLibrary={() => changeTab("library")}
@@ -309,7 +318,7 @@ export default function App() {
           phase={wipePhase}
           direction={wipeDirection}
           onCoverComplete={() => {
-            setDisplayedTab(tab);
+            setDisplayedTab(pendingViewRef.current);
             setWipePhase("revealing");
           }}
           onRevealComplete={() => setWipePhase(null)}
