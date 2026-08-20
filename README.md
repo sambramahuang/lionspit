@@ -304,9 +304,11 @@ whatever email you put in `PARTNER_EMAILS` to get partner access (the
   lawyer must not also hide it from the conflict check, or the two
   features would defeat each other) and deliberately never auto-applies a
   wall — a flag surfaces on the Matters page (`matter_conflict_flags`
-  table) for a partner to review and acknowledge. First-pass name matching
-  only, same limitation as matter clustering: "Vantage Components Pte Ltd"
-  and "Vantage Components" won't be recognized as the same company.
+  table) for a partner to review and acknowledge. Case-insensitive exact
+  name matching only (`conflicts._name`) — unlike matter clustering
+  (`matters.cluster_key`), which now tolerates entity-suffix formatting
+  differences, this still won't recognize "Vantage Components Pte Ltd" and
+  "Vantage Components" as the same company (see "Extending this" below).
 - **Document deletion** (`DELETE /api/documents/{doc_id}`): removing a
   single wrongly-ingested or genuinely obsolete document used to mean
   wiping the entire index — this is the actual fix. Partner-gated like
@@ -348,9 +350,14 @@ are easy to miss and will produce a blank page or 401s if skipped:
   documents across 14 matters, but more matters means richer
   clustering/lineage/conflict demos.
 - **Conflict detection beyond exact-name matching**: today's check
-  (`backend/app/conflicts.py`) is case-insensitive exact matching only —
-  fuzzy/alias matching (e.g. "Vantage Components" vs "Vantage Components
-  Pte Ltd") would catch more real conflicts.
+  (`backend/app/conflicts.py`) is still case-insensitive exact matching
+  only — fuzzy/alias matching (e.g. "Vantage Components" vs "Vantage
+  Components Pte Ltd") would catch more real conflicts. Matter clustering
+  (`matters.cluster_key`) already got this treatment (entity-suffix
+  normalization, plus a content-based fallback for documents with no
+  usable name at all — see "Ethical walls" above); the same normalization
+  helper (`matters._normalize_party_name`) would be a reasonable starting
+  point for `conflicts.py` too.
 - **Partner roles beyond an env var**: `PARTNER_EMAILS` in `backend/app/
   config.py` is a static allowlist — fine for a demo, but a real version
   would be a role stored per-user (e.g. in Supabase) with an admin screen
