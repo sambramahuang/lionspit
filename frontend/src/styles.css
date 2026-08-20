@@ -790,6 +790,12 @@ main.content {
 
 .badge-approved { background: var(--flag-green-bg); color: var(--flag-green); border-color: rgba(63, 110, 82, 0.18); }
 .badge-unapproved { background: var(--paper-dim); color: var(--text-muted); border-color: var(--rule-soft); }
+.approval-meta {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
 .badge-restricted { background: var(--flag-lock-bg); color: var(--flag-lock); border-color: rgba(99, 80, 135, 0.18); }
 .badge-conflict { background: var(--flag-red-bg); color: var(--flag-red); border-color: rgba(168, 69, 58, 0.18); }
 
@@ -1387,6 +1393,31 @@ input[type="range"] {
   top: -9px;
   right: 8px;
   background: var(--flag-green);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-xs);
+}
+
+/* Same red used for "rejected"/superseded results in Search -- a prior
+   step in a document's own version chain, not just any other same-matter
+   document (those stay neutral; see .lineage-node's default styling). */
+.lineage-node-superseded {
+  background: var(--flag-red-bg);
+  border-color: var(--flag-red);
+}
+
+.lineage-node-superseded::after {
+  content: "superseded";
+  position: absolute;
+  top: -9px;
+  right: 8px;
+  background: var(--flag-red);
   color: #fff;
   font-family: var(--font-mono);
   font-size: 8.5px;

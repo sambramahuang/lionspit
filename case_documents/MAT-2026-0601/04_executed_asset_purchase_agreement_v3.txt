@@ -1,0 +1,34 @@
+NORTHSTAR & VALE LLP
+EXECUTED ASSET PURCHASE AGREEMENT
+
+Matter: MAT-2026-0601
+Date: 2026-03-31
+Client: HelioGrid Energy Pte Ltd
+Seller: Meridian Infrastructure Holdings Pte Ltd
+Document type: Contracts / Agreements
+Status: In force
+Version: 3.0
+Document executed: Yes
+Partner approved: Yes
+
+1. SALE AND PURCHASE
+1.1 The Seller sells and the Buyer purchases the assets listed in Schedule 1, including the battery-management software, customer contracts and equipment identified in the signed asset register.
+1.2 The purchase price is SGD 18,500,000, adjusted under the completion accounts procedure in Clause 8.
+
+2. ASSUMED AND EXCLUDED LIABILITIES
+The Buyer assumes only the Assumed Liabilities listed in Schedule 3. All pre-Completion tax, employment, environmental, warranty and litigation liabilities remain with the Seller.
+
+3. CONDITIONS AND COMPLETION
+The required customer consents, permit confirmations and insurance evidence were delivered before Completion. Completion occurred on 31 March 2026.
+
+4. WARRANTIES
+The Seller warrants title to the Assets, authority to enter this Agreement, accuracy of the disclosure letter and absence of undisclosed material claims. The warranties survive for 18 months.
+
+5. ESCROW AND INDEMNITY
+SGD 1,850,000 is held in escrow for 12 months. The Seller indemnifies the Buyer for Excluded Liabilities, tax claims and warranty breaches. The cap does not apply to fraud, wilful misconduct or title.
+
+6. GOVERNING LAW
+This Agreement is governed by Singapore law. The parties submit to the exclusive jurisdiction of the Singapore courts.
+
+SIGNED for and on behalf of HelioGrid Energy Pte Ltd and Meridian Infrastructure Holdings Pte Ltd.
+FINAL EXECUTED VERSION.

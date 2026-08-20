@@ -14,6 +14,7 @@ Flow (mirrors the demo script):
 
 from collections import defaultdict
 from datetime import datetime, timedelta
+import re
 
 from app import matters, vectorstore
 from app.llm_client import call_llm_json
@@ -382,7 +383,22 @@ def run_clause_search(req, user_email: str) -> ClauseSearchResponse:
         else:
             visible.append(c)
 
-    visible.sort(key=lambda c: c["similarity"], reverse=True)
+    usage_values = {
+        c["doc_id"]: float(c["meta"].get("usage_count") or 0)
+        for c in visible
+    }
+    usage_scores = _normalize(usage_values)
+    weights = req.weights
+    for c in visible:
+        meta = c["meta"]
+        c["weighted_score"] = (
+            c["similarity"] * weights.similarity
+            + usage_scores.get(c["doc_id"], 0.5) * weights.frequency
+            + (1.0 if meta.get("partner_approved") is True else 0.0) * weights.partner_approval
+            + 0.5 * weights.jurisdiction_match
+        )
+
+    visible.sort(key=lambda c: c["weighted_score"], reverse=True)
     keep_n = max(req.keep_top, 0)
     kept = [
         ClauseResult(
@@ -412,6 +428,26 @@ def _to_lineage_node(record: dict) -> LineageNode:
         filename=meta.get("filename", record["doc_id"]),
         metadata=DocumentMetadata(**meta),
     )
+
+
+def _lineage_family_key(filename: str) -> str:
+    """Normalize lifecycle filenames to the underlying document family.
+
+    Matter references group all documents in a file, but a file can contain
+    several unrelated documents. Lifecycle prefixes and version markers are
+    the reliable family signal available in the current metadata model.
+    """
+    name = filename.rsplit("/", 1)[-1].lower()
+    name = re.sub(r"\.[^.]+$", "", name)
+    name = re.sub(r"^\d+[_-]+", "", name)
+    name = re.sub(
+        r"(?:partner[_-]?)?redlined?|draft(?:ed)?|final(?:i[sz]ed)?|execute(?:d)?|clean(?:ed)?|marked[_-]?up",
+        "",
+        name,
+    )
+    name = re.sub(r"(?:^|[_-])v?\d+(?:\.\d+)?(?:[_-]?(?:redlined?|final|draft))?(?=$|[_-])", "", name)
+    name = re.sub(r"[_-]+", "_", name).strip("_")
+    return name or filename.lower()
 
 
 def _supersession_reason(current_meta: dict, other_meta: dict) -> str:
@@ -444,10 +480,9 @@ def _supersession_reason(current_meta: dict, other_meta: dict) -> str:
 def compute_lineage(user_email: str) -> LineageResponse:
     """Corpus-wide view of the same matter-clustering + supersession logic
     run_search uses per-query, exposed as a standalone graph: one cluster
-    per matter (matter_type + practice_area + jurisdiction), with the
-    "current" document at the hub and every other version pointing to it
-    with a plain-English reason. Documents with no cluster-mate are listed
-    separately rather than force-fit into a graph with nothing to show.
+    per matter reference, with solid edges for true version chains and
+    dashed related edges connecting other documents in the same matter.
+    Matters containing only one document are listed separately.
 
     Walled matters are excluded entirely before clustering starts, same as
     run_search's access_restricted step, so a walled matter's documents
@@ -465,10 +500,14 @@ def compute_lineage(user_email: str) -> LineageResponse:
 
     clusters = []
     standalone = []
-    for key, group in grouped.items():
-        if len(group) < 2:
-            standalone.extend(_to_lineage_node(r) for r in group)
+    for key, matter_group in grouped.items():
+        if len(matter_group) < 2:
+            standalone.extend(_to_lineage_node(r) for r in matter_group)
             continue
+
+        families = defaultdict(list)
+        for record in matter_group:
+            families[_lineage_family_key(record["metadata"].get("filename", record["doc_id"]))].append(record)
 
         def sort_key(r):
             meta = r["metadata"]
@@ -479,27 +518,41 @@ def compute_lineage(user_email: str) -> LineageResponse:
                 str(meta.get("version") or ""),
             )
 
-        group_sorted = sorted(group, key=sort_key, reverse=True)
-        current = group_sorted[0]
-        others = group_sorted[1:]
+        family_chains = []
+        for family_name, family_group in families.items():
+            chain = sorted(family_group, key=sort_key)
+            family_chains.append((family_name, chain))
 
-        edges = [
-            LineageEdge(
-                from_doc_id=other["doc_id"],
-                to_doc_id=current["doc_id"],
-                reason=_supersession_reason(current["metadata"], other["metadata"]),
+        current_record = max(matter_group, key=sort_key)
+        ordered_records = []
+        edges = []
+        for family_name, chain in sorted(family_chains, key=lambda item: min(sort_key(r) for r in item[1])):
+            ordered_records.extend(chain)
+            edges.extend(
+                LineageEdge(
+                    from_doc_id=older["doc_id"],
+                    to_doc_id=newer["doc_id"],
+                    reason=_supersession_reason(newer["metadata"], older["metadata"]),
+                    relation="version",
+                )
+                for older, newer in zip(chain, chain[1:])
             )
-            for other in others
-        ]
+            family_current = chain[-1]
+            if family_current["doc_id"] != current_record["doc_id"]:
+                edges.append(
+                    LineageEdge(
+                        from_doc_id=family_current["doc_id"],
+                        to_doc_id=current_record["doc_id"],
+                        reason="related document in the same matter; not a version of the target document",
+                        relation="related",
+                    )
+                )
 
-        client = current["metadata"].get("client_name") or "Unnamed client"
-        matter = current["metadata"].get("matter_type") or "Matter"
-        jurisdiction = current["metadata"].get("jurisdiction")
+        client = current_record["metadata"].get("client_name") or "Unnamed client"
+        matter = current_record["metadata"].get("matter_type") or "Matter"
+        jurisdiction = current_record["metadata"].get("jurisdiction")
         label = f"{client} — {matter} · {jurisdiction}" if jurisdiction else f"{client} — {matter}"
-        # Same reasoning as matters.summarize()'s label: show the explicit
-        # reference number actually driving cluster_key's grouping, not just
-        # the current document's own (possibly type-specific) matter_type.
-        reference = next((r["metadata"].get("matter_reference") for r in group_sorted if r["metadata"].get("matter_reference")), None)
+        reference = next((r["metadata"].get("matter_reference") for r in matter_group if r["metadata"].get("matter_reference")), None)
         if reference:
             label = f"{reference} — {label}"
 
@@ -507,8 +560,8 @@ def compute_lineage(user_email: str) -> LineageResponse:
             LineageCluster(
                 key=key,
                 label=label,
-                current_doc_id=current["doc_id"],
-                nodes=[_to_lineage_node(r) for r in group_sorted],
+                current_doc_id=current_record["doc_id"],
+                nodes=[_to_lineage_node(r) for r in ordered_records],
                 edges=edges,
             )
         )

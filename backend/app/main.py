@@ -16,6 +16,7 @@ from app.models import (
     DocumentRecord,
     DraftRequest,
     DraftResponse,
+    DocumentApprovalRequest,
     IngestResult,
     LineageResponse,
     MatterSummary,
@@ -144,6 +145,28 @@ def delete_document(doc_id: str, user: CurrentUser = Depends(require_partner)):
         raise HTTPException(403, "This matter is walled off. You don't have access to view it.")
     vectorstore.delete_document(doc_id)
     return {"status": "deleted", "doc_id": doc_id}
+
+
+@app.post("/api/documents/{doc_id}/approval", response_model=DocumentRecord)
+def set_document_approval(
+    doc_id: str,
+    req: DocumentApprovalRequest,
+    user: CurrentUser = Depends(require_partner),
+):
+    record = vectorstore.get_by_id(doc_id)
+    if record is None:
+        raise HTTPException(404, "document not found")
+    if matters.is_blocked(record["metadata"], user.email, matters.load_walls()):
+        raise HTTPException(403, "This matter is walled off. You don't have access to approve it.")
+
+    updated = vectorstore.set_document_approval(doc_id, req.approved, user.email, req.note)
+    return DocumentRecord(
+        doc_id=updated["doc_id"],
+        filename=updated["metadata"].get("filename", doc_id),
+        metadata=updated["metadata"],
+        usage_count=int(updated["metadata"].get("usage_count", 0) or 0),
+        text_preview=(updated["text"][:280] + "...") if len(updated["text"]) > 280 else updated["text"],
+    )
 
 
 @app.get("/api/lineage", response_model=LineageResponse)

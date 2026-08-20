@@ -17,6 +17,7 @@ simpler and safer in a serverless context (no stale-connection-after-
 cold-start class of bugs to worry about), and fast enough at this scale.
 """
 import json
+from datetime import datetime, timezone
 
 import psycopg
 from pgvector.psycopg import register_vector
@@ -141,6 +142,38 @@ def delete_document(doc_id: str):
     the only way to correct a bad ingest short of a full reset()."""
     with _connect() as conn:
         conn.execute("DELETE FROM documents WHERE doc_id = %s", (doc_id,))
+
+
+def set_document_approval(doc_id: str, approved: bool, approved_by: str, note: str | None = None):
+    """Persist a partner's approval decision in the document JSON metadata."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT text, metadata FROM documents WHERE doc_id = %s FOR UPDATE",
+            (doc_id,),
+        ).fetchone()
+        if not row:
+            return None
+
+        text, metadata = row
+        updated = dict(metadata or {})
+        updated["partner_approved"] = approved
+        if approved:
+            updated["approved_by"] = approved_by
+            updated["approved_at"] = datetime.now(timezone.utc).isoformat()
+            if note and note.strip():
+                updated["approval_note"] = note.strip()
+            else:
+                updated.pop("approval_note", None)
+        else:
+            updated.pop("approved_by", None)
+            updated.pop("approved_at", None)
+            updated.pop("approval_note", None)
+
+        conn.execute(
+            "UPDATE documents SET metadata = %s WHERE doc_id = %s",
+            (json.dumps(_clean_metadata(updated)), doc_id),
+        )
+        return {"doc_id": doc_id, "text": text, "metadata": updated}
 
 
 def add_document_clauses(doc_id: str, clauses: list[dict]):

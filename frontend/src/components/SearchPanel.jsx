@@ -1,4 +1,33 @@
-import React from "react";
+import React, { useMemo } from "react";
+
+// Hardcoded example queries grounded in documents actually in the seeded
+// corpus (case_documents/) -- rotated randomly instead of one static
+// example, so the placeholder doesn't quietly go stale/unbelievable if the
+// corpus changes, and so it demonstrates a wider slice of what the search
+// actually finds rather than always showing the same one query.
+const DOCUMENT_QUERY_EXAMPLES = [
+  "application for specific production of QA defect logs in a supply contract dispute",
+  "specific production of bunker fuel delivery and lab test records",
+  "board seat threshold for a Series B investor",
+  "royalty rate in a trademark licensing agreement",
+  "vacant possession clause in a residential sale and purchase agreement",
+  "anti-dilution protection on a down round",
+  "non-compete restriction on a licensee",
+  "quality control and inspection rights over a licensed brand",
+];
+
+const CLAUSE_QUERY_EXAMPLES = [
+  "threshold for specific production under Order 11 Rule 3",
+  "broad-based weighted average anti-dilution formula",
+  "tag-along and drag-along rights at 75%",
+  "time being of the essence for completion",
+  "quality control inspection rights for a licensor",
+  "royalty rate increasing from year 3 onward",
+];
+
+function pickRandom(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
 
 const WEIGHT_LABELS = {
   similarity: "Similarity to query",
@@ -36,6 +65,14 @@ export default function SearchPanel({
     setter((prev) => prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]);
   };
 
+  // Re-rolled whenever `mode` changes (including the first render) -- not
+  // on every keystroke, which would make the placeholder flicker while
+  // the field is empty and focused.
+  const placeholderExample = useMemo(
+    () => pickRandom(mode === "clauses" ? CLAUSE_QUERY_EXAMPLES : DOCUMENT_QUERY_EXAMPLES),
+    [mode]
+  );
+
   return (
     <div className="card">
       <div className="view-toggle" style={{ marginBottom: 14 }}>
@@ -63,8 +100,8 @@ export default function SearchPanel({
             className="search-input"
             placeholder={
               mode === "clauses"
-                ? 'Describe the exact provision you need, e.g. "cap on indemnity liability" or "termination for convenience"'
-                : 'Describe what you need — legal terms or plain English both work, e.g. "cap on founder liability in a shareholders agreement"'
+                ? `Describe the exact provision you need, e.g. "${placeholderExample}"`
+                : `Describe what you need — legal terms or plain English both work, e.g. "${placeholderExample}"`
             }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -93,8 +130,6 @@ export default function SearchPanel({
             />
           </div>
 
-          <div className="section-label" style={{ margin: "18px 0 4px", fontSize: 16 , color:"black"}}>Customize weights</div>
-          
           <div className="filter-checklists">
             <fieldset className="filter-checklist">
               <legend>Recency</legend>
@@ -117,27 +152,30 @@ export default function SearchPanel({
             </fieldset>
           </div>
 
-          
-          <div className="weights-panel">
-            {Object.entries(weights).filter(([key]) => key !== "recency").map(([key, value]) => (
-              <div className="weight-row" key={key}>
-                <label>
-                  <span>{WEIGHT_LABELS[key] || key}</span>
-                  <span className="weight-value">{value.toFixed(2)}</span>
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={value}
-                  onChange={(e) => updateWeight(key, e.target.value)}
-                />
-              </div>
-            ))}
-          </div>
         </>
       )}
+
+      <div className="section-label" style={{ margin: "18px 0 4px", fontSize: 16, color: "black" }}>
+        Customize weights
+      </div>
+      <div className="weights-panel">
+        {Object.entries(weights).filter(([key]) => key !== "recency").map(([key, value]) => (
+          <div className="weight-row" key={key}>
+            <label>
+              <span>{WEIGHT_LABELS[key] || key}</span>
+              <span className="weight-value">{value.toFixed(2)}</span>
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={value}
+              onChange={(e) => updateWeight(key, e.target.value)}
+            />
+          </div>
+        ))}
+      </div>
 
       {mode === "clauses" && (
         <p style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "14px 0 0" }}>

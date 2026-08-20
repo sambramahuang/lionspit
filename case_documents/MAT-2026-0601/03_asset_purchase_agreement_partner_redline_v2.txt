@@ -1,0 +1,31 @@
+NORTHSTAR & VALE LLP
+PARTNER REVIEW REDLINE - ASSET PURCHASE AGREEMENT
+
+Matter: MAT-2026-0601
+Date: 2026-02-19
+Client: HelioGrid Energy Pte Ltd
+Seller: Meridian Infrastructure Holdings Pte Ltd
+Document type: Contracts / Agreements
+Status: Draft for negotiation
+Version: 2.0
+
+1. SALE AND PURCHASE
+1.1 The Seller shall sell and the Buyer shall purchase the assets listed in Schedule 1, including the battery-management software, customer contracts and equipment identified in the asset register.
+1.2 The purchase price shall be SGD 18,500,000, subject to the completion accounts procedure in Clause 8. The amount shall be reduced by any customer termination payment received before Completion.
+
+2. EXCLUDED LIABILITIES
+The Buyer shall not assume any liability arising from events occurring before Completion. The parties confirm that product warranty liabilities are excluded even where a warranty claim is notified after Completion.
+
+3. CONDITIONS PRECEDENT
+Completion is conditional on contract consents, permits, insurance evidence and delivery of the Seller's disclosure letter. The Buyer may waive a condition only in writing.
+
+4. WARRANTIES AND DISCLOSURE
+The Seller warrants that it owns the Assets free from security interests and has disclosed all material claims. The warranties are repeated at Completion and survive for 18 months.
+
+5. INDEMNITY AND ESCROW
+The Seller shall indemnify the Buyer for Excluded Liabilities and warranty breaches. Ten percent of the Purchase Price shall be retained in escrow for 12 months. The liability cap is the Purchase Price, except for fraud, wilful misconduct, title and tax.
+
+6. COMPLETION
+Completion shall take place on 31 March 2026, subject to satisfaction or written waiver of the Conditions Precedent.
+
+PARTNER COMMENTS: Confirm the transfer mechanics for the software licence; obtain a schedule of customer consents; do not accept a general exclusion for environmental liabilities. DRAFT - NOT FOR SIGNING.

@@ -1,0 +1,28 @@
+NORTHSTAR & VALE LLP
+PARTNER REDLINE - SHAREHOLDERS AGREEMENT
+
+Matter: MAT-2026-0603
+Date: 2026-03-18
+Company: LumenArc Technologies Pte Ltd
+Shareholders: Cedar Ventures Fund II LP; Foundry Labs Pte Ltd; Priya Nair
+Practice area: Corporate and venture financing
+Document type: Contracts / Agreements
+Version: 1.0-redline
+Status: Draft for negotiation
+
+1. GOVERNANCE
+The board shall comprise five directors, of whom Cedar may nominate two, Foundry may nominate one, and the founders may nominate two while they hold at least 12% of the issued shares.
+
+2. RESERVED MATTERS
+The Company shall not, without Investor Consent, issue shares, incur borrowings above SGD 2,000,000, dispose of material intellectual property, approve an annual budget materially outside the agreed plan, or enter a related-party transaction.
+
+3. TRANSFERS AND ROFO
+A shareholder proposing to transfer shares must first offer them to the other shareholders pro rata. Transfers to an affiliate are permitted if the affiliate signs a deed of adherence.
+
+4. DRAG AND TAG
+If holders of at least 70% accept a bona fide third-party offer, they may require all shareholders to sell on the same terms. Minority shareholders may participate in a sale of more than 50% of the Company.
+
+5. FOUNDER LEAVER
+Founder shares vest over 48 months. A good-leaver receives fair market value; a bad-leaver receives the lower of subscription price and fair market value.
+
+PARTNER COMMENTS: tighten the Investor Consent threshold, align the drag trigger with the constitution, and add a deadlock escalation procedure. DRAFT - NOT EXECUTED.

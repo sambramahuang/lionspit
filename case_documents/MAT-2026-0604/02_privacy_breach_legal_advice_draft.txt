@@ -1,0 +1,22 @@
+NORTHSTAR & VALE LLP
+PRIVILEGED INCIDENT RESPONSE ADVICE - DRAFT
+
+Matter: MAT-2026-0604
+Date: 2026-02-08
+Client: Northstar Health Systems Pte Ltd
+Processor: CloudMosaic Solutions Pte Ltd
+Practice area: Technology, privacy and data protection
+Document type: Legal opinions
+Version: 1.0
+Status: Draft
+
+1. INITIAL ASSESSMENT
+The evidence presently indicates unauthorised access to a limited diagnostic export. The legal assessment depends on the number of affected individuals, whether the data was copied or merely viewed, and the sensitivity of the diagnostic fields.
+
+2. CONTRACTUAL DUTIES
+CloudMosaic must notify Northstar without undue delay, preserve logs and assist with a risk assessment. Northstar must document its decision on whether notification to the regulator or affected individuals is required.
+
+3. RECOMMENDATION
+Complete the access-log review, obtain a signed incident statement from CloudMosaic, identify affected records, and prepare a holding statement. Do not make a final notification decision until the scope is verified.
+
+DRAFT FOR PARTNER REVIEW.

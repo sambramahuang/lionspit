@@ -1,0 +1,22 @@
+NORTHSTAR & VALE LLP
+PRIVILEGED LEGAL OPINION - DRAFT
+
+Matter: MAT-2026-0602
+Date: 2026-02-02
+Client: Meridian Infrastructure Holdings Pte Ltd
+Counterparty: Eastbank Utilities Ltd
+Practice area: Dispute resolution and energy regulation
+Document type: Legal opinions
+Version: 1.0
+Status: Draft
+
+1. QUESTION
+Whether Eastbank may terminate the Grid Services Framework Agreement immediately after Meridian missed the January availability target.
+
+2. ANALYSIS
+Clause 14 permits termination for a material breach only if the breach is not remedied within 30 days after notice. The service-credit mechanism in Clause 9 is expressed as the exclusive financial remedy for an isolated availability shortfall. On the current evidence, Eastbank has not shown that the shortfall is persistent or material.
+
+3. RECOMMENDED RESPONSE
+Meridian should reject immediate termination, provide the requested operational logs, and propose an independent verification of the availability calculation. It should reserve all rights and avoid characterising the shortfall as an admission of breach.
+
+DRAFT FOR PARTNER REVIEW. This opinion is not final and must be checked against the signed Framework Agreement.
