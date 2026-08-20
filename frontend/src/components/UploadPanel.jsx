@@ -9,6 +9,11 @@ export default function UploadPanel({ onIngested }) {
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
 
+  const okCount = results?.filter((r) => r.status === "ingested").length ?? 0;
+  const conflictCount =
+    results?.filter((r) => r.status === "ingested" && r.conflict_warnings?.length > 0).length ?? 0;
+  const failCount = results ? results.length - okCount : 0;
+
   const addFiles = (fileList) => {
     const files = Array.from(fileList);
     setStaged((prev) => [...prev, ...files]);
@@ -83,6 +88,13 @@ export default function UploadPanel({ onIngested }) {
 
       {results && (
         <div style={{ marginTop: 16 }}>
+          <div className={`success-banner ${okCount === 0 ? "success-banner-error" : ""}`}>
+            {okCount > 0
+              ? `✓ ${okCount} of ${results.length} document${results.length === 1 ? "" : "s"} indexed successfully` +
+                (conflictCount > 0 ? ` — ${conflictCount} flagged for conflict review` : "") +
+                (failCount > 0 ? `. ${failCount} failed.` : ".")
+              : `${failCount} document${failCount === 1 ? "" : "s"} failed to ingest — see details below.`}
+          </div>
           <div className="section-label" style={{ margin: "0 0 8px" }}>
             Last ingest result <span className="count">{results.length}</span>
           </div>

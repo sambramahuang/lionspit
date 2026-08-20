@@ -1,9 +1,10 @@
 """
 Thin wrapper around the OpenAI API. Every other module calls the LLM
-through the two helpers here, so there is exactly one place that touches
+through the helpers here, so there is exactly one place that touches
 the SDK, one place that handles retries/parsing, and one place you'd
 change if you swapped models.
 """
+import base64
 import json
 import re
 from functools import lru_cache
@@ -35,6 +36,46 @@ def call_llm_text(system: str, user: str, max_tokens: int = 1500, temperature: f
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},
+        ],
+    )
+    return resp.choices[0].message.content or ""
+
+
+def transcribe_image(image_bytes: bytes, mime_type: str = "image/png") -> str:
+    """OCR fallback for an image-only page (a scanned document with no text
+    layer) via the same vision-capable chat model everything else already
+    uses -- no Tesseract/poppler binary needed, which matters because
+    Vercel's serverless Python runtime can't apt-get one in. See
+    ingestion.extract_text's PDF branch for the only caller: it renders a
+    text-less page to an image (PyMuPDF, also binary-free) and hands it
+    here as a last resort, not on every PDF."""
+    client = get_client()
+    b64 = base64.b64encode(image_bytes).decode("ascii")
+    resp = client.chat.completions.create(
+        model=settings.OPENAI_MODEL,
+        max_completion_tokens=1500,
+        temperature=0.0,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You transcribe scanned legal documents. Read the image and "
+                    "output every piece of text visible on the page -- body text, "
+                    "signature blocks, printed and handwritten names, dates, "
+                    "stamps -- in reading order, plain text only. If something is "
+                    "illegible, write [illegible] in its place rather than "
+                    "guessing. Do not add commentary, headers, or markdown."
+                ),
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime_type};base64,{b64}"},
+                    }
+                ],
+            },
         ],
     )
     return resp.choices[0].message.content or ""

@@ -140,9 +140,9 @@ a { color: var(--ink); }
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Vertical padding sized for the brand mark (96px), the tallest thing
-     in the bar -- at 24px this left only ~8px of clearance above/below
-     it, reading as cramped against the top edge. */
+  /* Vertical padding sized for the Dock (64px), the tallest thing in the
+     bar -- at 24px this left only ~8px of clearance above/below it,
+     reading as cramped against the top edge. */
   padding: 40px 32px;
   position: relative;
   z-index: 10;
@@ -153,8 +153,8 @@ a { color: var(--ink); }
 .brand {
   position: absolute;
   top: 50%;
-  left: 6em;
-  transform: translateY(-50%);
+  left: 56px;
+  transform: translateY(calc(-50% - 3px));
   display: flex;
   align-items: center;
 }
@@ -165,15 +165,14 @@ a { color: var(--ink); }
   background: transparent;
   color: var(--text-primary);
 
-  font-family: "Alegreya", serif;
-  font-size: clamp(3rem, 2vw, 2.6rem);
+  font-family: var(--font-display);
+  font-size: 2.16rem;
   font-weight: 400;
   letter-spacing: 0.03em;
   line-height: 1;
 
   padding: 0;
   cursor: pointer;
-  transform: translateY(-1px);
 
   transition: opacity 0.2s ease;
 }
@@ -1693,6 +1692,24 @@ input[type="range"] {
   padding: 11px 14px;
   font-size: 13px;
   margin-bottom: 16px;
+}
+
+.success-banner {
+  background: var(--flag-green-bg);
+  color: var(--flag-green);
+  border: 1px solid rgba(63, 110, 82, 0.2);
+  border-left: 3px solid var(--flag-green);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.success-banner-error {
+  background: var(--flag-red-bg);
+  color: var(--flag-red);
+  border-color: rgba(168, 69, 58, 0.2);
+  border-left-color: var(--flag-red);
 }
 
 .spinner-text {

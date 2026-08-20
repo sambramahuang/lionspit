@@ -8,7 +8,7 @@ Do not use any names or facts herein as real precedent or real party data.
 This repository simulates two small Singapore law firms' flat, client-name-
 based folder structures (no case management system) — mixed document types,
 some relevant to a given query and some irrelevant "noise", exactly as
-they'd sit in a real shared drive. It combines three sub-sets, seeded
+they'd sit in a real shared drive. It combines four sub-sets, seeded
 together and searched as one corpus:
 
 - **Litigation set** (`HC-S-214-2026`, `HC-ADM-88-2026`, `MAT-2026-0398`,
@@ -26,6 +26,14 @@ together and searched as one corpus:
   supply a second, independent example of the automatic conflict check: the
   same party (Meridian Infrastructure Holdings) appears as the *counterparty*
   in `MAT-2026-0601` and then as the *client* in `MAT-2026-0602`.
+- **Services & Distributorship set** (`MAT-2026-0544`, `MAT-2026-0577`,
+  `MAT-2026-0588`, `MAT-2026-0631`, `MAT-2026-0654`, `MAT-2026-0699`) — Wee
+  Corporate Law LLC again, contributed by Trisha, purpose-built around a
+  single hard prompt that mixes service and distributorship agreements and
+  forces the system to work out which side of the deal each document was
+  drafted for, catch a "same substance, different vocabulary" semantic trap,
+  and OCR a genuinely image-only scanned exhibit. See "Ground truth —
+  services & distributorship set" below.
 
 Folders are named by **court suit/summons number** (for litigation matters)
 or **internal firm matter reference number** (for transactional matters) —
@@ -134,6 +142,87 @@ example of the automatic conflict check:
 | `MAT-2026-0602` | Meridian Infrastructure Holdings v Eastbank Utilities | Client: Meridian Infrastructure Holdings — the same company recorded as *counterparty* in `MAT-2026-0601`. Ingesting this matter (after `0601`) trips the automatic positional-conflict check: the firm is now acting *for* a party it was recently acting *against*. |
 | `MAT-2026-0603` | LumenArc Technologies — Series B with Cedar Ventures | A second, independent venture-financing/shareholders-agreement matter — useful for testing that ranking correctly separates near-duplicate-in-kind matters (this one, `MAT-2026-0455`, `MAT-2026-0473`, `MAT-2026-0561`) by party rather than by document type alone. |
 | `MAT-2026-0604` | Northstar Health Systems — CloudMosaic data breach | Technology/privacy matter; no overlap with the others. |
+
+## Ground truth — services & distributorship set
+
+Suggested test prompt: *"Draft a mixture of service agreements and
+distributorship agreements for our client as the customer. Include a
+limitation of liability, default, an indemnity, and a right to terminate
+for convenience."* Every agreement in this set contains all four of those
+clauses, so a system can't discriminate between them by looking for
+missing provisions — it has to work out **which side each document was
+drafted for**, and recognise those clauses when they aren't called by
+their usual names.
+
+| Folder | Matter | Type | Relevant to the prompt? |
+|---|---|---|---|
+| `MAT-2026-0699` | Helix Data Systems — Orbital Compute cloud services | Services | **YES.** Executed, partner-approved, customer side. |
+| `MAT-2026-0631` | Meridian Retail Concepts — Halcyon Instruments | Distributorship | **YES.** Executed, partner-approved, distributor (buying) side. |
+| `MAT-2026-0654` | Solstice Instruments — Aurelian Scientific | Distributorship, disguised | **YES.** A distributor-side agreement that uses none of the expected words — the hardest hit in the set. |
+| `MAT-2026-0577` | Northwind Systems standard form | Services | NO — same subject, drafted for the supplier. |
+| `MAT-2026-0588` | Kestrel Nutrition regional template | Distributorship | NO — same subject, drafted for the principal. |
+| `MAT-2026-0544` | Larkspur Media trade mark assignment | Neither | NO — clean noise. |
+
+A correct run retrieves three documents and rejects three. A system that
+returns five has failed to detect the side of the deal; a system that
+returns two has missed the semantic trap.
+
+**Semantic trap — the same contract, none of the same words.**
+`MAT-2026-0654/03_final_channel_partner_framework_deed.docx` is
+substantively equivalent to `MAT-2026-0631/05` — a limitation of liability,
+a default clause, an indemnity, and termination for convenience — but calls
+every one of them something else ("Financial Limits", "Hold Harmless
+Undertaking", "Events of Non-Performance", "Discretionary Exit Right"), and
+displaces the party/concept vocabulary too (*Originator* for supplier,
+*Channel Partner* for distributor, *the Range* for Products, and so on).
+Keyword/BM25 retrieval misses it completely; embedding retrieval should
+find it but rank it low. `MAT-2026-0654/04_knowledge_note_vocabulary_mapping.docx`
+is a knowledge note written for exactly this purpose, setting out the full
+mapping — a system that reads knowledge notes and follows their
+cross-references should surface the deed even if its own similarity
+scoring doesn't.
+
+**Wrong side of the deal, twice.** Two pairs share subject matter, clause
+headings, and most of their vocabulary, but allocate risk in opposite
+directions — reusing the wrong one produces a draft that argues against
+the client's own interest. Services pair: `MAT-2026-0699/05` (customer,
+generous caps and remedies) vs `MAT-2026-0577/03` (supplier, tight caps, no
+customer remedies). Distributorship pair: `MAT-2026-0631/05` (distributor,
+enforceable exclusivity and a stock buy-back) vs `MAT-2026-0588/03`
+(principal, non-exclusive and revocable, no buy-back). The distinguishing
+signals are the party definitions, the client correspondence, and an
+explicit supplier-side banner on `0577/03` and `0588/03` — none of it is in
+the clause text itself.
+
+**OCR — a scanned document with no text layer.**
+`MAT-2026-0699/06_scanned_signed_execution_pages.pdf` is a genuine
+image-only PDF (rasterised, slight page skew, JPEG-backed, no text layer at
+all) containing the signatory names and execution date, which appear
+nowhere else in machine-readable form. Ask *"do we have a signed copy of
+the Orbital Compute agreement?"* — a pipeline without OCR reports nothing
+found while the file sits right there. `backend/app/ingestion.py`'s
+`_ocr_pdf` fallback (PyMuPDF render + vision-model transcription) exists to
+pass this test.
+
+**Moving-target facts.** Several commercial positions change across each
+negotiated agreement's draft → redline → final lifecycle (e.g.
+`MAT-2026-0699`'s data-breach super-cap runs 300% draft → 100% inclusive
+markup → 200% additive executed) — a system that answers from a draft or
+markup rather than the execution version states the wrong position
+confidently. The attendance/file notes (`0699/07`, `0631/06`) record the
+final outcomes and are often the most efficient source for "what did we
+agree on X."
+
+**Same-firm, same-partner noise.** All six matters share a firm, partner,
+and associate; billing summaries, correspondence, and document structure
+all read alike and carry no discriminating signal.
+
+Secondary prompts worth demoing: *"Find our distributor-side exclusivity
+wording"* (should return both `MAT-2026-0631` and `MAT-2026-0654`, not just
+the first); *"Do we have a supplier-side services template?"* (should
+return `MAT-2026-0577` and not `MAT-2026-0699` — the wrong-side test run in
+reverse); *"What did we agree on the stock buy-back deduction?"*; *"Do we
+have a signed copy of the Orbital Compute agreement?"* (the OCR test).
 
 ## File formats
 Documents are provided as **.docx** (Word), **.pdf**, or plain **.txt**

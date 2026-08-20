@@ -9,10 +9,11 @@ import io
 import re
 import uuid
 
+import fitz  # PyMuPDF
 from docx import Document as DocxDocument
 from pypdf import PdfReader
 
-from app.llm_client import call_llm_json
+from app.llm_client import call_llm_json, transcribe_image
 from app.models import DocumentMetadata
 
 METADATA_SYSTEM_PROMPT = """You are a legal document triage assistant at a law firm.
@@ -50,11 +51,51 @@ exactly these keys:
 """
 
 
+# A genuine scanned page with no text layer returns "" from pypdf, not a
+# handful of stray characters -- this threshold just also catches a text
+# layer that's present but junk (e.g. a lone watermark), where OCR is still
+# worth trying rather than treating a few leftover characters as "has text".
+_MIN_EXTRACTED_TEXT_CHARS = 20
+_MAX_OCR_PAGES = 8  # bounds cost/latency on a pathologically large scan
+
+
+def _ocr_pdf(content: bytes) -> str:
+    """OCR fallback for a PDF whose text layer is empty or near-empty -- a
+    scanned document, not something pypdf can fix by trying harder. Renders
+    each page to an image via PyMuPDF (no external binary needed, unlike
+    poppler/tesseract -- see llm_client.transcribe_image's docstring for
+    why that matters on Vercel) and transcribes it with the vision model.
+    Capped at _MAX_OCR_PAGES so one large scanned document doesn't turn a
+    single upload into dozens of vision calls."""
+    doc = fitz.open(stream=content, filetype="pdf")
+    pages_text = []
+    for page in doc[:_MAX_OCR_PAGES]:
+        pixmap = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0))  # ~144 DPI
+        try:
+            pages_text.append(transcribe_image(pixmap.tobytes("png")))
+        except Exception:
+            continue  # one page's OCR failing shouldn't sink the whole document
+    return "\n\n".join(t for t in pages_text if t.strip())
+
+
 def extract_text(filename: str, content: bytes) -> str:
     lower = filename.lower()
     if lower.endswith(".pdf"):
         reader = PdfReader(io.BytesIO(content))
-        return "\n".join(page.extract_text() or "" for page in reader.pages)
+        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        if len(text.strip()) < _MIN_EXTRACTED_TEXT_CHARS:
+            # Most likely a scanned document rather than a native PDF --
+            # try OCR before giving up. Falls back to whatever pypdf found
+            # (usually empty) if OCR itself fails for any reason, so a
+            # vision-API outage degrades to today's behavior (ingestion
+            # fails with "no extractable text") instead of blocking on it.
+            try:
+                ocr_text = _ocr_pdf(content)
+                if ocr_text.strip():
+                    return ocr_text
+            except Exception:
+                pass
+        return text
     if lower.endswith(".docx"):
         doc = DocxDocument(io.BytesIO(content))
         # Real redlines in the wild are usually manual strikethrough/underline
