@@ -38,6 +38,20 @@ function pickRandom(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+// Matches the app's icon language elsewhere (App.jsx's ICON_PROPS,
+// BentoGrid's glyphs) -- thin-stroke line icon, not an emoji.
+function AttachIcon() {
+  return (
+    <svg
+      width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+      style={{ verticalAlign: -2 }}
+    >
+      <path d="M21.44 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
 const WEIGHT_LABELS = {
   similarity: "Similarity to query",
   frequency: "Firm usage frequency",
@@ -147,11 +161,7 @@ export default function SearchPanel({
             ref={textareaRef}
             className="search-input search-input-expandable"
             rows={1}
-            placeholder={
-              mode === "clauses"
-                ? `Describe the exact provision you need, e.g. "${placeholderExample}"`
-                : `Describe what you need — legal terms or plain English both work. Paste in as much context as you want (the facts of the matter you're working on, not just a short phrase), e.g. "${placeholderExample}"`
-            }
+            placeholder={`e.g. "${placeholderExample}"`}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -170,6 +180,11 @@ export default function SearchPanel({
         </button>
       </div>
 
+      <p className="search-hint">
+        Legal terms or plain English both work — paste in as much context as you want (the facts
+        of the matter you're working on), not just a short phrase.
+      </p>
+
       <div className="search-attach-row">
         <input
           ref={fileInputRef}
@@ -185,12 +200,12 @@ export default function SearchPanel({
             onClick={handleAttachClick}
             disabled={attaching}
           >
-            {attaching ? "Reading document..." : "📎 Attach a document for context"}
+            <AttachIcon /> {attaching ? "Reading document..." : "Attach a document for context"}
           </button>
         )}
         {attachedContext && (
           <span className="search-attach-chip">
-            📎 {attachedContext.filename}
+            <AttachIcon /> {attachedContext.filename}
             <button
               type="button"
               aria-label="Remove attached document"

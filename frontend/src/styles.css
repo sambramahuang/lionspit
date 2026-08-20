@@ -812,8 +812,16 @@ main.content {
 ------------------------------------------------------------------------ */
 .search-row {
   display: flex;
+  align-items: flex-start;
   gap: 10px;
   margin-bottom: 6px;
+}
+
+/* Button sits at its own natural height, top-aligned with the textarea,
+   regardless of how tall the textarea grows -- flex's default
+   align-items: stretch would otherwise stretch it to match. */
+.search-row .btn-primary {
+  flex: none;
 }
 
 .search-advanced-toggle {
@@ -865,6 +873,13 @@ main.content {
   max-height: 320px;
   line-height: 1.5;
   font-family: var(--font-ui);
+}
+
+.search-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 2px 10px;
+  line-height: 1.5;
 }
 
 .search-attach-row {
