@@ -107,19 +107,35 @@ async def extract_text(file: UploadFile = File(...), _user: CurrentUser = Depend
 
 @app.get("/api/documents", response_model=list[DocumentRecord])
 def list_documents(user: CurrentUser = Depends(get_current_user)):
+    """
+    Walled documents are still listed, not omitted -- a lawyer should see
+    that a document exists and is walled off, not have it silently absent
+    with no explanation (same "explain, don't silently drop" principle
+    search.py's access_restricted already follows). Only the content is
+    withheld: text_preview is blanked for a restricted record, and the
+    frontend disables preview/approve/delete for it. The actual document
+    text stays unreachable regardless -- get_document still enforces the
+    wall itself for anyone who tries the doc_id directly.
+    """
     records = vectorstore.list_all()
     walls = matters.load_walls()
     out = []
     for r in records:
-        if matters.is_blocked(r["metadata"], user.email, walls):
-            continue
         meta = r["metadata"]
+        blocked = matters.is_blocked(meta, user.email, walls)
         out.append(DocumentRecord(
             doc_id=r["doc_id"],
             filename=meta.get("filename", r["doc_id"]),
             metadata=meta,
             usage_count=int(meta.get("usage_count", 0) or 0),
-            text_preview=(r["text"][:280] + "...") if len(r["text"]) > 280 else r["text"],
+            text_preview="" if blocked else (
+                (r["text"][:280] + "...") if len(r["text"]) > 280 else r["text"]
+            ),
+            access_restricted=blocked,
+            restricted_reason=(
+                "This matter is walled off. You don't have access to view it."
+                if blocked else None
+            ),
         ))
     return out
 

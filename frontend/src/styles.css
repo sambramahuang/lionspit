@@ -328,7 +328,7 @@ main.content {
 
 .hero-title {
   font-family: var(--font-display);
-  font-size: 68px;
+  font-size: 75px;
   font-weight: 600;
   letter-spacing: -0.8px;
   line-height: 1.05;
@@ -346,7 +346,7 @@ main.content {
 }
 
 @media (max-width: 640px) {
-  .hero-title { font-size: 44px; }
+  .hero-title { font-size: 48px; }
 }
 
 /* Start Here is now just the hero -- the bento/firm's-best-work content
@@ -821,6 +821,13 @@ main.content {
 .matter-row-conflict { background: var(--flag-red-bg); }
 .doc-table tr.matter-row-conflict:hover td { background: var(--flag-red-bg); }
 
+/* A walled document is still listed (existence isn't hidden -- see
+   main.py's list_documents), just visibly locked -- same lock-purple
+   family as .badge-restricted rather than the conflict row's red, since
+   this isn't a problem to resolve, just access the viewer doesn't have. */
+.doc-row-restricted { background: var(--flag-lock-bg); }
+.doc-table tr.doc-row-restricted:hover td { background: var(--flag-lock-bg); }
+
 /* ---------------------------------------------------------------------
    Search panel
 ------------------------------------------------------------------------ */
@@ -841,6 +848,7 @@ main.content {
 .search-advanced-toggle {
   padding: 5px 9px;
   font-size: 12px;
+  margin-left: auto;
 }
 
 .search-input-wrap {
@@ -899,6 +907,7 @@ main.content {
 .search-attach-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 10px;
 }
@@ -1258,6 +1267,23 @@ input[type="range"] {
   padding: 1px 6px;
 }
 
+/* Same warning family as .gap-badge (red = needs attention, matching the
+   rest of the app's flag vocabulary) but a solid fill so it reads as more
+   urgent than an honest, expected "gap" -- this is the model failing to
+   follow its own citation rule (see drafting.py's _flag_uncited_clauses),
+   not a known limitation it disclosed. */
+.uncited-badge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  background: var(--flag-red);
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin: 0 1px;
+  white-space: nowrap;
+}
+
 .sources-panel {
   position: sticky;
   top: 20px;
@@ -1338,7 +1364,6 @@ input[type="range"] {
 }
 
 .preview-text {
-  white-space: pre-wrap;
   font-family: var(--font-display);
   line-height: 1.7;
   font-size: 15px;
@@ -1346,7 +1371,62 @@ input[type="range"] {
   background: var(--paper-dim);
   border: 1px solid var(--rule-soft);
   border-radius: var(--radius-sm);
-  padding: 17px 19px;
+  padding: 20px 22px;
+}
+
+.preview-block + .preview-block {
+  margin-top: 14px;
+}
+
+.preview-heading {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.preview-kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  row-gap: 3px;
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--paper);
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+}
+
+.preview-kv dt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  padding-top: 1px;
+}
+
+.preview-kv dd {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.preview-kv-standalone {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.preview-para {
+  margin: 0;
+  text-align: justify;
 }
 
 .modal-close {
@@ -1428,6 +1508,12 @@ input[type="range"] {
 .lineage-diagram {
   position: relative;
   overflow-x: auto;
+  /* overflow-x: auto silently turns overflow-y into "auto" too (the
+     CSS overflow spec ties the two axes together once either one
+     isn't "visible"), which clips the "current"/"superseded" ribbon
+     badges poking above each node's top edge (see their -9px `top`
+     offset below). This padding reserves room for that overhang. */
+  padding-top: 12px;
 }
 
 .lineage-svg {

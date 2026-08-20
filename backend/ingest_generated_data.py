@@ -49,13 +49,13 @@ OVERRIDES = {
     "02_asset_purchase_agreement_draft_v1.txt": {"document_type": "Contracts / Agreements", "version": "1.0", "is_draft_or_model": "draft", "partner_approved": False, "document_date": "2026-02-03"},
     "03_asset_purchase_agreement_partner_redline_v2.txt": {"document_type": "Contracts / Agreements", "version": "2.0", "is_draft_or_model": "draft", "partner_approved": False, "document_date": "2026-02-19"},
     "04_executed_asset_purchase_agreement_v3.txt": {"document_type": "Contracts / Agreements", "version": "3.0", "is_draft_or_model": "executed", "partner_approved": True, "document_executed": True, "document_date": "2026-03-31"},
-    "02_grid_services_termination_advice_draft.txt": {"document_type": "Legal opinions", "version": "1.0", "is_draft_or_model": "draft", "partner_approved": False, "document_date": "2026-02-02"},
-    "03_grid_services_termination_advice_final.txt": {"document_type": "Legal opinions", "version": "2.0", "is_draft_or_model": "executed", "partner_approved": True, "document_date": "2026-02-20"},
+    "02_grid_services_termination_advice_draft.txt": {"document_type": "Legal opinions / Advice", "version": "1.0", "is_draft_or_model": "draft", "partner_approved": False, "document_date": "2026-02-02"},
+    "03_grid_services_termination_advice_final.txt": {"document_type": "Legal opinions / Advice", "version": "2.0", "is_draft_or_model": "executed", "partner_approved": True, "document_date": "2026-02-20"},
     "02_series_b_investment_agreement_draft.txt": {"document_type": "Contracts / Agreements", "version": "1.0", "is_draft_or_model": "draft", "partner_approved": False, "document_date": "2026-02-15"},
     "03_shareholders_agreement_partner_redline.txt": {"document_type": "Contracts / Agreements", "version": "1.0-redline", "is_draft_or_model": "draft", "partner_approved": False, "document_date": "2026-03-18"},
     "04_executed_shareholders_agreement.txt": {"document_type": "Contracts / Agreements", "version": "2.0", "is_draft_or_model": "executed", "partner_approved": True, "document_executed": True, "document_date": "2026-06-30"},
-    "02_privacy_breach_legal_advice_draft.txt": {"document_type": "Legal opinions", "version": "1.0", "is_draft_or_model": "draft", "partner_approved": False, "document_date": "2026-02-08"},
-    "03_privacy_breach_legal_advice_final.txt": {"document_type": "Legal opinions", "version": "2.0", "is_draft_or_model": "executed", "partner_approved": True, "document_date": "2026-02-14"},
+    "02_privacy_breach_legal_advice_draft.txt": {"document_type": "Legal opinions / Advice", "version": "1.0", "is_draft_or_model": "draft", "partner_approved": False, "document_date": "2026-02-08"},
+    "03_privacy_breach_legal_advice_final.txt": {"document_type": "Legal opinions / Advice", "version": "2.0", "is_draft_or_model": "executed", "partner_approved": True, "document_date": "2026-02-14"},
 }
 
 

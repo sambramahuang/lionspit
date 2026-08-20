@@ -54,6 +54,7 @@ function AttachIcon() {
 
 const WEIGHT_LABELS = {
   similarity: "Similarity to query",
+  recency: "Recency",
   frequency: "Firm usage frequency",
   partner_approval: "Partner approval",
   jurisdiction_match: "Jurisdiction match",
@@ -63,19 +64,27 @@ const RECENCY_OPTIONS = [
   ["30d", "Past 30 days"], ["6m", "Past 6 months"], ["1y", "Past 1 year"],
   ["3y", "Past 3 years"], ["5y", "Past 5 years"],
 ];
-const STATUS_OPTIONS = ["In force", "Repealed", "Amending/ overruled"];
+// Mirrors ingestion.py's is_draft_or_model values -- a firm precedent's
+// currency (draft vs. model vs. executed) rather than a legislative status
+// like "in force"/"repealed", which doesn't apply to a firm's own documents.
+const DOCUMENT_STATUS_OPTIONS = [
+  ["draft", "Draft"],
+  ["model", "Model / template"],
+  ["executed", "Executed"],
+  ["unknown", "Unknown"],
+];
 const DOCUMENT_TYPE_OPTIONS = [
-  "Cases / Judgments", "Legislation", "Regulations", "Contracts / Agreements",
-  "Legal opinions", "Pleadings", "Firm precedents", "Other",
+  "Contracts / Agreements", "Legal opinions / Advice", "Pleadings / Court filings",
+  "Client correspondence", "Internal memo", "Billing", "Other",
 ];
 
 export default function SearchPanel({
   query, setQuery,
-  attachedContext, onAttachedContextChange,
+  attachedContexts, onAttachedContextsChange,
   jurisdictionFilter, setJurisdictionFilter,
   matterTypeFilter, setMatterTypeFilter,
   recencyFilter, setRecencyFilter,
-  statusFilters, setStatusFilters,
+  isDraftOrModelFilters, setIsDraftOrModelFilters,
   documentTypeFilters, setDocumentTypeFilters,
   weights, setWeights,
   mode, setMode,
@@ -116,22 +125,29 @@ export default function SearchPanel({
   const handleAttachClick = () => fileInputRef.current?.click();
 
   const handleFileSelected = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file later
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    e.target.value = ""; // allow re-selecting the same file(s) later
+    if (!files.length) return;
     setAttachError(null);
     setAttaching(true);
     try {
-      const res = await api.extractText(file);
-      const text = res.text.length > MAX_ATTACHED_CONTEXT_CHARS
-        ? res.text.slice(0, MAX_ATTACHED_CONTEXT_CHARS) + "…"
-        : res.text;
-      onAttachedContextChange?.({ filename: res.filename, text });
+      const extracted = await Promise.all(files.map(async (file) => {
+        const res = await api.extractText(file);
+        const text = res.text.length > MAX_ATTACHED_CONTEXT_CHARS
+          ? res.text.slice(0, MAX_ATTACHED_CONTEXT_CHARS) + "…"
+          : res.text;
+        return { id: crypto.randomUUID(), filename: res.filename, text };
+      }));
+      onAttachedContextsChange?.([...(attachedContexts || []), ...extracted]);
     } catch (err) {
       setAttachError(err.message);
     } finally {
       setAttaching(false);
     }
+  };
+
+  const removeAttachedContext = (id) => {
+    onAttachedContextsChange?.((attachedContexts || []).filter((doc) => doc.id !== id));
   };
 
   return (
@@ -175,7 +191,7 @@ export default function SearchPanel({
             }}
           />
         </div>
-        <button className="btn btn-primary" onClick={onSearch} disabled={busy || (!query.trim() && !attachedContext)}>
+        <button className="btn btn-primary" onClick={onSearch} disabled={busy || (!query.trim() && !attachedContexts?.length)}>
           {busy ? "Searching..." : "Search"}
         </button>
       </div>
@@ -190,42 +206,45 @@ export default function SearchPanel({
           ref={fileInputRef}
           type="file"
           accept=".txt,.docx,.pdf"
+          multiple
           style={{ display: "none" }}
           onChange={handleFileSelected}
         />
-        {!attachedContext && (
-          <button
-            type="button"
-            className="btn btn-ghost search-attach-btn"
-            onClick={handleAttachClick}
-            disabled={attaching}
-          >
-            <AttachIcon /> {attaching ? "Reading document..." : "Attach a document for context"}
-          </button>
-        )}
-        {attachedContext && (
-          <span className="search-attach-chip">
-            <AttachIcon /> {attachedContext.filename}
+        <button
+          type="button"
+          className="btn btn-ghost search-attach-btn"
+          onClick={handleAttachClick}
+          disabled={attaching}
+        >
+          {attaching
+            ? "Reading document..."
+            : attachedContexts?.length
+              ? "Attach another document"
+              : "Attach a document for context"}
+        </button>
+        {attachedContexts?.map((doc) => (
+          <span className="search-attach-chip" key={doc.id}>
+            <AttachIcon /> {doc.filename}
             <button
               type="button"
-              aria-label="Remove attached document"
-              onClick={() => onAttachedContextChange?.(null)}
+              aria-label={`Remove ${doc.filename}`}
+              onClick={() => removeAttachedContext(doc.id)}
             >
               ×
             </button>
           </span>
-        )}
+        ))}
         {attachError && <span className="reason-text" style={{ margin: 0 }}>{attachError}</span>}
-      </div>
 
-      <button
-        type="button"
-        className="btn btn-ghost search-advanced-toggle"
-        onClick={() => setShowAdvanced((v) => !v)}
-        aria-expanded={showAdvanced}
-      >
-        {showAdvanced ? "▾" : "▸"} Filters &amp; weights
-      </button>
+        <button
+          type="button"
+          className="btn btn-ghost search-advanced-toggle"
+          onClick={() => setShowAdvanced((v) => !v)}
+          aria-expanded={showAdvanced}
+        >
+          Filters &amp; weights
+        </button>
+      </div>
 
       <AnimatePresence initial={false}>
         {showAdvanced && (
@@ -257,16 +276,16 @@ export default function SearchPanel({
 
                   <div className="filter-checklists">
                     <fieldset className="filter-checklist">
-                      <legend>Recency</legend>
+                      <legend>Document date</legend>
                       {RECENCY_OPTIONS.map(([value, label]) => (
                         <label key={value}><input type="radio" name="recency" checked={recencyFilter === value} onChange={() => setRecencyFilter(value)} />{label}</label>
                       ))}
                       <label><input type="radio" name="recency" checked={!recencyFilter} onChange={() => setRecencyFilter("")} />Any time</label>
                     </fieldset>
                     <fieldset className="filter-checklist">
-                      <legend>Status category</legend>
-                      {STATUS_OPTIONS.map((value) => (
-                        <label key={value}><input type="checkbox" checked={statusFilters.includes(value)} onChange={() => toggleFilter(setStatusFilters, value)} />{value}</label>
+                      <legend>Document status</legend>
+                      {DOCUMENT_STATUS_OPTIONS.map(([value, label]) => (
+                        <label key={value}><input type="checkbox" checked={isDraftOrModelFilters.includes(value)} onChange={() => toggleFilter(setIsDraftOrModelFilters, value)} />{label}</label>
                       ))}
                     </fieldset>
                     <fieldset className="filter-checklist">
@@ -283,7 +302,12 @@ export default function SearchPanel({
                 Customize weights
               </div>
               <div className="weights-panel">
-                {Object.entries(weights).filter(([key]) => key !== "recency").map(([key, value]) => (
+                {/* recency has no effect on clause search (run_clause_search
+                    doesn't use it -- see search.py) so it's hidden there
+                    rather than shown as a slider that silently does nothing */}
+                {Object.entries(weights)
+                  .filter(([key]) => mode === "documents" || key !== "recency")
+                  .map(([key, value]) => (
                   <div className="weight-row" key={key}>
                     <label>
                       <span>{WEIGHT_LABELS[key] || key}</span>

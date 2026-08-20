@@ -3,14 +3,15 @@ Non-destructive metadata refresh: re-runs metadata extraction against
 every document ALREADY in the store, using its already-extracted text
 (no re-upload needed), and updates it in place by doc_id.
 
-Why this exists: ingestion.py's metadata schema picked up two new fields
-(`status`, and a `document_type` restricted to a fixed set of categories)
-after most of the current corpus was ingested under the old schema, so
-those documents have `status=null` and a free-text `document_type` that
-doesn't match the new category list. Since search.py's status/
-document_type filters only match on an exact value, that mismatch made
-those filters silently exclude the whole pre-existing corpus. This
-backfills them without vectorstore.reset() -- unlike seed_demo_data.py
+Why this exists: ingestion.py's `document_type` category list changes from
+time to time (most recently: from a primary-law taxonomy to one that
+actually matches a firm's own document types -- precedents, drafts,
+redlines, correspondence, memos), so documents ingested under an older
+schema end up with a `document_type` that doesn't match the current
+category list. Since search.py's document_type filter only matches on an
+exact value, that mismatch silently excludes the whole pre-existing
+corpus from that filter. This backfills them without vectorstore.reset()
+-- unlike seed_demo_data.py
 --reset, it never truncates the table, so it's safe to run while other
 ingests are happening against the same store: it only UPSERTs the doc_ids
 it already fetched, and never deletes anything.
@@ -39,7 +40,7 @@ def main():
             fresh_dict["matter_reference"] = meta["matter_reference"]
         vectorstore.add_document(doc_id, text, fresh_dict)
         updated += 1
-        print(f"  + {fresh_dict['filename']:55s} document_type={fresh.document_type!r} status={fresh.status!r}")
+        print(f"  + {fresh_dict['filename']:55s} document_type={fresh.document_type!r} is_draft_or_model={fresh.is_draft_or_model!r}")
 
     print(f"Done. Re-tagged {updated}/{len(records)} documents.")
 

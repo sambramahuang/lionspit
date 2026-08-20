@@ -30,7 +30,6 @@ class DocumentMetadata(BaseModel):
     responsible_lawyer: Optional[str] = None
     counterparty_type: Optional[str] = None
     document_type: Optional[str] = None
-    status: Optional[str] = None  # "In force" | "Repealed" | "Amending/ overruled"
     matter_completed: Optional[bool] = None
     document_executed: Optional[bool] = None
     is_draft_or_model: Optional[str] = None  # "draft" | "model" | "executed" | "unknown"
@@ -49,6 +48,14 @@ class DocumentRecord(BaseModel):
     metadata: DocumentMetadata
     usage_count: int = 0
     text_preview: str = ""
+    # True when the caller is walled off from this document's matter. The
+    # record still appears in /api/documents -- existence isn't a secret,
+    # only content is -- but text_preview is withheld, and the frontend
+    # disables preview/approve/delete for it. get_document/delete_document/
+    # set_document_approval independently re-check the wall server-side, so
+    # this flag is a UI signal only, never the actual enforcement point.
+    access_restricted: bool = False
+    restricted_reason: str | None = None
 
 
 class DocumentApprovalRequest(BaseModel):
@@ -83,11 +90,25 @@ class SearchRequest(BaseModel):
     jurisdiction_filter: str | None = None
     matter_type_filter: str | None = None
     recency_filter: str | None = None
-    status_filters: list[str] = Field(default_factory=list)
+    is_draft_or_model_filters: list[str] = Field(default_factory=list)
     document_type_filters: list[str] = Field(default_factory=list)
     weights: RankingWeights = Field(default_factory=RankingWeights)
-    candidate_pool: int = 8
-    keep_top: int = 2
+    # Raw nearest-neighbor pool pulled before wall-filtering/ranking/
+    # supersession runs -- has to be generous enough to reliably contain
+    # every document in a query's true matter cluster (so supersession can
+    # compare them against each other at all), not just the single closest
+    # match. At 8 the correct, partner-approved precedent for the corpus's
+    # own flagship "shareholders agreement" query ranked 14th by raw
+    # embedding similarity -- below its own earlier drafts/redlines and a
+    # deliberately-planted stale duplicate -- and never reached scoring.
+    candidate_pool: int = 20
+    # "kept" is now threshold-based (see run_search) -- anything scoring
+    # within a fraction of the top result's score gets in, not just a fixed
+    # top-N -- so a matter's genuine current version isn't hidden in the
+    # collapsed "other candidates" list just because unrelated documents
+    # from other matters happened to outscore it on this particular query.
+    # keep_top now only acts as a safety cap on how many can qualify.
+    keep_top: int = 8
 
 
 class SearchResultItem(BaseModel):
@@ -214,6 +235,11 @@ class MatterSummary(BaseModel):
     document_count: int
     wall: MatterWallInfo
     conflict: ConflictFlag | None = None
+    # True when the caller is blocked from this matter and isn't a partner --
+    # label/allowed_emails/conflict are already stripped to generic values
+    # by matters.summarize() in that case; this just tells the frontend to
+    # render it as locked rather than as an editable/detailed row.
+    access_restricted: bool = False
 
 
 class DraftRequest(BaseModel):
@@ -230,6 +256,7 @@ class Citation(BaseModel):
 
 
 class DraftResponse(BaseModel):
-    draft_text: str  # contains inline [[n]] markers matching citations
+    draft_text: str  # contains inline [[n]] / [[GAP:...]] / [[UNCITED]] markers
     citations: list[Citation]
     gaps: list[str]  # things the sources didn't cover, flagged instead of invented
+    flagged_uncited: list[str] = Field(default_factory=list)  # clauses the model wrote with neither a citation nor a gap marker -- a prompt-compliance slip, surfaced instead of silently passing as grounded

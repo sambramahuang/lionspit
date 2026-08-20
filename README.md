@@ -54,18 +54,25 @@ Fill in `.env`:
 - `PARTNER_EMAILS` — comma-separated emails allowed to set/edit matter
   walls (e.g. your own, for testing).
 
-Seed the demo corpus — `case_documents/` at the repo root, 30 real
-`.docx`/`.pdf` files across 5 matters: two Singapore High Court disputes
-(each with an application for specific production of documents) plus
-three transactional matters (a residential conveyancing, a Series B
-shareholders' agreement, and a Vietnam trademark licence). Every matter
-carries client correspondence on firm letterhead, a billing summary, a
-draft with genuine partner mark-up (struck-through deletions, underlined
-insertions, marginal reviewer comments), a redlined/negotiated version, a
-final/executed version, and at least one same-matter "noise" document
-that shouldn't surface for an unrelated query. See
-`case_documents/README.md` for the full per-matter breakdown and ground
-truth:
+Seed the demo corpus — `case_documents/` at the repo root, 76 real
+`.docx`/`.pdf`/`.txt` files across 14 matters, spanning three sub-sets: two
+Singapore High Court disputes (each with an application for specific
+production of documents) plus three transactional matters (a residential
+conveyancing, a Series B shareholders' agreement, and a Vietnam trademark
+licence); a companion corporate/transactional set purpose-built around
+version discrimination, supersession, semantic-vs-lexical matching, access
+control and conflicts (a two-party joint venture shareholders' agreement,
+a Series A financing, a superseded 2024 precedent, a tenancy, and an
+employment matter); and a second fictional firm's four matters (an asset
+acquisition, an energy dispute, a second venture financing, and a data
+-breach matter) that round out practice-area coverage and supply a second,
+independent conflict example. Every matter carries client correspondence
+on firm letterhead, a billing summary, a draft with genuine partner
+mark-up (struck-through deletions, underlined insertions, marginal
+reviewer comments), a redlined/negotiated version, a final/executed
+version, and at least one same-matter "noise" document that shouldn't
+surface for an unrelated query. See `case_documents/README.md` for the
+full per-matter breakdown and ground truth:
 
 ```bash
 python seed_demo_data.py --reset
@@ -241,11 +248,24 @@ whatever email you put in `PARTNER_EMAILS` to get partner access (the
   the same file — an explicit reference number is a stronger, type-agnostic
   signal than any inferred combination of fields. Falls back to the
   *unordered set* of `client_name` + `counterparty_name` plus `matter_type`
-  + `jurisdiction` when no reference is stated. Walling a matter sets an
-  allow-list of emails; everyone else is blocked from that matter's
-  documents in search, the library, lineage, and drafting alike — see
-  `matters.is_blocked()`, the single check every one of those code paths
-  goes through.
+  + `jurisdiction` when no reference is stated — party names are compared
+  entity-suffix-insensitively (`matters._normalize_party_name`), so "Alpha
+  Robotics Pte Ltd" and a document that just says "Alpha Robotics" still
+  count as the same party. For the rare document with neither a reference
+  number nor a usable party name — a genuinely messy upload — search
+  ranking and the lineage graph fall back one step further to
+  `matters.resolve_cluster_keys`, which compares the document's embedding
+  against the rest of the corpus and merges it into whichever existing
+  matter it's a near-duplicate of, so a matter isn't permanently fractured
+  just because one file's metadata extraction came back empty. This
+  content-based fallback deliberately isn't used by `is_blocked()` itself —
+  wall enforcement always stays on the plain structural key, so a fuzzy
+  content match can never change what a document is judged to be for
+  access-control purposes, only for grouping in search/lineage. Walling a
+  matter sets an allow-list of emails; everyone else is blocked from that
+  matter's documents in search, the library, lineage, and drafting alike —
+  see `matters.is_blocked()`, the single check every one of those code
+  paths goes through.
 - **Drafting** (`backend/app/drafting.py`): the LLM drafts strictly from
   the selected source documents, inserting a `[[n]]` citation marker after
   every clause it draws on, and a `[[GAP: ...]]` marker instead of
@@ -284,9 +304,11 @@ whatever email you put in `PARTNER_EMAILS` to get partner access (the
   lawyer must not also hide it from the conflict check, or the two
   features would defeat each other) and deliberately never auto-applies a
   wall — a flag surfaces on the Matters page (`matter_conflict_flags`
-  table) for a partner to review and acknowledge. First-pass name matching
-  only, same limitation as matter clustering: "Vantage Components Pte Ltd"
-  and "Vantage Components" won't be recognized as the same company.
+  table) for a partner to review and acknowledge. Case-insensitive exact
+  name matching only (`conflicts._name`) — unlike matter clustering
+  (`matters.cluster_key`), which now tolerates entity-suffix formatting
+  differences, this still won't recognize "Vantage Components Pte Ltd" and
+  "Vantage Components" as the same company (see "Extending this" below).
 - **Document deletion** (`DELETE /api/documents/{doc_id}`): removing a
   single wrongly-ingested or genuinely obsolete document used to mean
   wiping the entire index — this is the actual fix. Partner-gated like
@@ -324,13 +346,18 @@ are easy to miss and will produce a blank page or 401s if skipped:
 ## Extending this in the time you have left
 
 - **More corpus**: drop more files into `case_documents/` (any client
-  subfolder, or a new one) and re-run the seed script — currently 30
-  documents, comfortably within the brief's 20–50 range, but more matters
-  means richer clustering/lineage/conflict demos.
+  subfolder, or a new one) and re-run the seed script — currently 76
+  documents across 14 matters, but more matters means richer
+  clustering/lineage/conflict demos.
 - **Conflict detection beyond exact-name matching**: today's check
-  (`backend/app/conflicts.py`) is case-insensitive exact matching only —
-  fuzzy/alias matching (e.g. "Vantage Components" vs "Vantage Components
-  Pte Ltd") would catch more real conflicts.
+  (`backend/app/conflicts.py`) is still case-insensitive exact matching
+  only — fuzzy/alias matching (e.g. "Vantage Components" vs "Vantage
+  Components Pte Ltd") would catch more real conflicts. Matter clustering
+  (`matters.cluster_key`) already got this treatment (entity-suffix
+  normalization, plus a content-based fallback for documents with no
+  usable name at all — see "Ethical walls" above); the same normalization
+  helper (`matters._normalize_party_name`) would be a reasonable starting
+  point for `conflicts.py` too.
 - **Partner roles beyond an env var**: `PARTNER_EMAILS` in `backend/app/
   config.py` is a static allowlist — fine for a demo, but a real version
   would be a role stored per-user (e.g. in Supabase) with an admin screen

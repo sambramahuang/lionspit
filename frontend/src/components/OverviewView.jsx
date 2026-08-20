@@ -32,7 +32,14 @@ export default function OverviewView({ onPreview, onGoToLibrary, onGoToSearch })
   useEffect(() => {
     setLoading(true);
     setError(null);
-    api.listDocuments().then(setDocs).catch((e) => setError(e.message)).finally(() => setLoading(false));
+    // /api/documents now lists walled documents too (so the Library tab can
+    // show they exist), but Start Here curates the firm's best precedents
+    // to explore -- a document the viewer can't actually open has no place
+    // in that list, so it's filtered out here rather than in the API.
+    api.listDocuments()
+      .then((res) => setDocs(res.filter((d) => !d.access_restricted)))
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
   const byPracticeArea = useMemo(() => {
