@@ -1,75 +1,16 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
+import { renderDraftHtml, downloadDraftTxt, downloadDraftDocx, downloadDraftPdf } from "../utils/draftExport.js";
 
-/** The model writes plain-text drafts but reaches for **bold** naturally
- * for headings/defined terms -- rendered literally as asterisks otherwise,
- * which reads as broken in what's meant to be the polished, trustworthy
- * output. Splits a plain-text run on **bold** spans into text/<strong>. */
-function renderInlineMarkdown(text, keyPrefix) {
-  const boldRegex = /\*\*(.+?)\*\*/g;
-  const nodes = [];
-  let lastIndex = 0;
-  let match;
-  let i = 0;
-
-  while ((match = boldRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) nodes.push(text.slice(lastIndex, match.index));
-    nodes.push(<strong key={`${keyPrefix}-b${i++}`}>{match[1]}</strong>);
-    lastIndex = boldRegex.lastIndex;
-  }
-  if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
-  return nodes;
-}
-
-/** Splits draft text on [[n]]/[[GAP: ...]]/[[UNCITED]] markers and
- * standalone "---" section dividers (the model sometimes writes one
- * before a trailing "Drafting notes" section), rendering markers as
- * clickable navy badges (citations), red badges (gaps, and clauses the
- * backend caught with neither a citation nor a gap marker -- see
- * drafting.py's _flag_uncited_clauses) and dividers as a real rule
- * instead of three literal dashes. Plain-text runs in between also get
- * markdown bold spans resolved (see above). */
-function renderDraftText(text, onCiteClick) {
-  const parts = [];
-  const regex = /\[\[(GAP:[^\]]*|UNCITED|\d+)\]\]|^[ \t]*-{3,}[ \t]*$/gm;
-  let lastIndex = 0;
-  let match;
-  let key = 0;
-
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      const segment = text.slice(lastIndex, match.index);
-      parts.push(<span key={key}>{renderInlineMarkdown(segment, `s${key}`)}</span>);
-      key++;
-    }
-    const token = match[1];
-    if (token === undefined) {
-      parts.push(<hr key={key++} className="draft-divider" />);
-    } else if (token === "UNCITED") {
-      parts.push(
-        <span key={key++} className="uncited-badge" title="Not cited to any source -- review before use">
-          ⚠ uncited
-        </span>
-      );
-    } else if (token.startsWith("GAP:")) {
-      parts.push(
-        <span key={key++} className="gap-badge">gap: {token.slice(4).trim()}</span>
-      );
-    } else {
-      parts.push(
-        <button key={key++} className="cite-badge" onClick={() => onCiteClick(token)}>
-          {token}
-        </button>
-      );
-    }
-    lastIndex = regex.lastIndex;
-  }
-  if (lastIndex < text.length) {
-    const segment = text.slice(lastIndex);
-    parts.push(<span key={key}>{renderInlineMarkdown(segment, `s${key}`)}</span>);
-    key++;
-  }
-  return parts;
+/** Turns a query into a filesystem-safe stem for downloaded filenames --
+ * falls back to "draft" for an empty/punctuation-only query. */
+function slugify(text) {
+  const slug = (text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return slug || "draft";
 }
 
 export default function DraftView({ query, selectedDocIds, onCiteClick }) {
@@ -77,6 +18,23 @@ export default function DraftView({ query, selectedDocIds, onCiteClick }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [draft, setDraft] = useState(null);
+  const [exporting, setExporting] = useState(null); // null | "txt" | "docx" | "pdf"
+  const [editKey, setEditKey] = useState(0);
+  const draftRef = useRef(null);
+
+  // The AI output as HTML, computed once per new draft -- memoized on
+  // `draft` itself (not draft.draft_text derivatives) so unrelated
+  // re-renders (typing in the instructions box, etc.) don't recompute
+  // this string and reset the user's live in-place edits underneath them.
+  const draftHtml = useMemo(() => (draft ? renderDraftHtml(draft.draft_text) : ""), [draft]);
+
+  // Remounts the contentEditable node (via `key` below) from the fresh
+  // draftHtml, either because a new draft just landed or because the
+  // user hit "Reset edits" -- both cases want to discard whatever's
+  // currently in the live-edited DOM.
+  useEffect(() => {
+    setEditKey((k) => k + 1);
+  }, [draft]);
 
   const generate = async () => {
     setBusy(true);
@@ -94,6 +52,29 @@ export default function DraftView({ query, selectedDocIds, onCiteClick }) {
   const handleCiteClick = (marker) => {
     const citation = draft?.citations.find((c) => c.marker === marker);
     if (citation) onCiteClick(citation.doc_id);
+  };
+
+  // Citation badges are now plain DOM buttons (set via dangerouslySetInnerHTML,
+  // not React-managed onClick handlers) -- one delegated listener on the
+  // container catches clicks on any of them, including ones the user has
+  // since moved around while editing.
+  const handleDraftPageClick = (e) => {
+    const btn = e.target.closest(".cite-badge");
+    if (btn) handleCiteClick(btn.dataset.marker);
+  };
+
+  const resetEdits = () => setEditKey((k) => k + 1);
+
+  const runExport = async (kind, fn) => {
+    if (!draftRef.current || !draft) return;
+    setExporting(kind);
+    try {
+      await fn(draftRef.current, draft, slugify(query));
+    } catch (e) {
+      setError(`Export failed: ${e.message}`);
+    } finally {
+      setExporting(null);
+    }
   };
 
   return (
@@ -128,7 +109,34 @@ export default function DraftView({ query, selectedDocIds, onCiteClick }) {
 
       {draft && (
         <div className="draft-layout" style={{ marginTop: 14 }}>
-          <div className="draft-page">{renderDraftText(draft.draft_text, handleCiteClick)}</div>
+          <div>
+            <div className="draft-toolbar">
+              <span className="draft-edit-hint">✎ Click into the draft below to edit it directly</span>
+              <div className="draft-toolbar-actions">
+                <button className="btn btn-ghost" onClick={resetEdits} disabled={!!exporting}>
+                  Reset edits
+                </button>
+                <button className="btn btn-ghost" onClick={() => runExport("txt", downloadDraftTxt)} disabled={!!exporting}>
+                  {exporting === "txt" ? "Exporting…" : "Download .txt"}
+                </button>
+                <button className="btn btn-ghost" onClick={() => runExport("docx", downloadDraftDocx)} disabled={!!exporting}>
+                  {exporting === "docx" ? "Exporting…" : "Download .docx"}
+                </button>
+                <button className="btn btn-ghost" onClick={() => runExport("pdf", downloadDraftPdf)} disabled={!!exporting}>
+                  {exporting === "pdf" ? "Exporting…" : "Download .pdf"}
+                </button>
+              </div>
+            </div>
+            <div
+              key={editKey}
+              ref={draftRef}
+              className="draft-page"
+              contentEditable
+              suppressContentEditableWarning
+              onClick={handleDraftPageClick}
+              dangerouslySetInnerHTML={{ __html: draftHtml }}
+            />
+          </div>
           <div className="sources-panel">
             <div className="section-label" style={{ margin: 0 }}>
               Citations <span className="count">{draft.citations.length}</span>

@@ -1217,6 +1217,27 @@ input[type="range"] {
   align-items: start;
 }
 
+.draft-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.draft-edit-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.draft-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .draft-page {
   background: #fff;
   border: 1px solid var(--rule-soft);
@@ -1228,6 +1249,20 @@ input[type="range"] {
   font-size: 15px;
   line-height: 1.8;
   white-space: pre-wrap;
+}
+
+.draft-page[contenteditable="true"] {
+  cursor: text;
+  outline: none;
+  transition: box-shadow 0.15s var(--ease);
+}
+
+.draft-page[contenteditable="true"]:hover {
+  box-shadow: var(--shadow-md), 0 0 0 1px var(--ink-glass-border);
+}
+
+.draft-page[contenteditable="true"]:focus {
+  box-shadow: var(--shadow-md), 0 0 0 3px var(--ink-glass);
 }
 
 .draft-page strong {

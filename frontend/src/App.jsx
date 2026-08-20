@@ -216,6 +216,7 @@ export default function App() {
             axis="y"
             direction="down"
             onCoverComplete={() => {
+              setDisplayedTab(pendingViewRef.current);
               setDisplayedAuthed(true);
               setAuthWipePhase("revealing");
             }}
