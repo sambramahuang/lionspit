@@ -7,6 +7,7 @@
    document, and the numbered citation badges in the draft view that
    tie back to it.
 ------------------------------------------------------------------------ */
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap');
 :root {
   --ink: #1b2430;
   --ink-soft: #262f3d;
@@ -152,21 +153,35 @@ a { color: var(--ink); }
 .brand {
   position: absolute;
   top: 50%;
-  left: 32px;
+  left: 6em;
   transform: translateY(-50%);
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 
-/* No card chrome at all -- the logo's own alpha transparency (verified:
-   corners are fully transparent, only the fox+"Kitsu" mark is opaque)
-   means with no border/background here, only the mark itself is visible,
-   sitting directly on the page, free to tilt with nothing framing it. */
-.tilted-card-img {
-  border-radius: 0;
+.brand-wordmark {
+  appearance: none;
   border: none;
   background: transparent;
+  color: var(--text-primary);
+
+  font-family: "Alegreya", serif;
+  font-size: clamp(3rem, 2vw, 2.6rem);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  line-height: 1;
+
+  padding: 0;
+  cursor: pointer;
+  transform: translateY(-1px);
+
+  transition: opacity 0.2s ease;
+}
+
+.brand-wordmark:hover {
+  opacity: 0.8;
+  scale: 1.05;
+  transition: ease-in-out 0.5s;
 }
 
 /* Absolutely positioned so it sits at the top-right independent of the
@@ -245,22 +260,33 @@ a { color: var(--ink); }
    opaque thing in the bar -- against a moving background, a subtle
    alpha difference alone read as "both buttons look the same gray." */
 .dock-item {
-  background-color: rgba(38, 47, 61, 0.22);
-  border-color: rgba(49, 60, 77, 0.4);
-  color: var(--on-ink-muted);
-  transition: background-color 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease);
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: rgba(244, 242, 236, 1);
+  transition: background-color 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.dock-item:hover:not(.active) {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: rgba(244, 242, 236, 1);
 }
 
 .dock-item.active {
-  background-color: rgba(49, 60, 77, 0.85);
+  background-color: rgba(73, 84, 97, 1);
   border-color: rgba(169, 178, 192, 0.5);
+  box-shadow: 0 4px 12px rgba(5, 8, 13, 0.35);
   color: var(--on-ink);
 }
 
 /* Belt-and-suspenders: a faint dark halo behind the icon strokes so they
    stay readable even if background/opacity gets tuned again later. */
 .dock-icon svg {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+  display: block;
+  stroke: currentColor;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 }
 
 .dock-label {
@@ -444,39 +470,32 @@ main.content {
   border-bottom: 1px solid var(--rule-soft);
 }
 
-.auth-logo {
-  width: 181px;
-  height: 181px;
-  object-fit: contain;
-  border-radius: 0;
-  box-shadow: none;
-  filter: brightness(0);
-}
-
 .auth-brand-external {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  background: transparent;  
   margin-bottom: 14px;
-  padding-bottom: 0;
+  padding-bottom: 16;
   border-bottom: 0;
-  color: #000;
+  color: var(--ink);
 }
 
 .auth-brand-external * {
-  color: #000;
+  color: inherit;
 }
 
 .auth-brand-name {
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: 70px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
   line-height: 1.1;
-  color: #000;
-}
-
-.auth-brand-tag {
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #000;
-  margin-top: 2px;
+  color: inherit;
+  text-shadow: none;
 }
 
 .auth-header {
@@ -520,11 +539,6 @@ main.content {
 @media (max-width: 520px) {
   .auth-shell {
     padding: 28px 16px;
-  }
-
-  .auth-logo {
-    width: 156px;
-    height: 156px;
   }
 
   .auth-card {

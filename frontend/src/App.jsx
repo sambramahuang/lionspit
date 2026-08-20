@@ -13,7 +13,6 @@ import SearchPage from "./components/SearchPage.jsx";
 import PreviewModal from "./components/PreviewModal.jsx";
 import AppBackground from "./components/AppBackground.jsx";
 import Dock from "./components/Dock/Dock.jsx";
-import TiltedCard from "./components/TiltedCard/TiltedCard.jsx";
 import { useDocumentPreview } from "./hooks/useDocumentPreview.js";
 
 const prefersReducedMotion =
@@ -25,7 +24,7 @@ const ICON_PROPS = {
   viewBox: "0 0 24 24",
   fill: "none",
   stroke: "currentColor",
-  strokeWidth: 1.6,
+  strokeWidth: 1.9,
   strokeLinecap: "round",
   strokeLinejoin: "round",
 };
@@ -209,20 +208,9 @@ export default function App() {
 
       <header className="topbar">
         <div className="brand">
-          <TiltedCard
-            imageSrc="/icon.png"
-            altText="Kitsu AI icon"
-            captionText="Kitsu AI"
-            containerHeight="96px"
-            containerWidth="96px"
-            imageHeight="96px"
-            imageWidth="96px"
-            rotateAmplitude={14}
-            scaleOnHover={1.08}
-            showMobileWarning={false}
-            showTooltip={false}
-            onClick={showWelcome}
-          />
+          <button className="brand-wordmark" onClick={showWelcome} type="button">
+            Kitsu
+          </button>
         </div>
 
         <Dock

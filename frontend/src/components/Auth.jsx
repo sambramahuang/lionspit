@@ -40,12 +40,8 @@ export default function Auth() {
         <AppBackground />
       </div>
 
-      <div className="auth-brand auth-brand-external" aria-label="Kitsu AI brand">
-          <img src="/icon.png" alt="Kitsu AI icon" className="auth-logo" />
-          <div>
-            <div className="auth-brand-name">Kitsu AI</div>
-            <div className="auth-brand-tag">Document intelligence</div>
-          </div>
+      <div className="auth-brand auth-brand-external" aria-label="Kitsu brand">
+        <div className="auth-brand-name">Kitsu</div>
       </div>
 
       <form className="card auth-card" onSubmit={submit}>

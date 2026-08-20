@@ -27,7 +27,7 @@
   justify-content: center;
   border-radius: 10px;
   background-color: #120F17;
-  border: 1px solid #222;
+  border: 0px solid #222;
   box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
